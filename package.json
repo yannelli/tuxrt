@@ -2,6 +2,8 @@
   "name": "tuxrt",
   "version": "0.1.0",
   "description": "A TypeScript runtime that emulates an Ubuntu 24.04 Linux CLI: virtual filesystem, POSIX-style shell, and core utilities.",
+  "license": "MIT",
+  "author": "Ryan Yannelli",
   "type": "module",
   "bin": {
     "tuxrt": "./dist/cli.js"
@@ -28,6 +30,7 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ]
 }

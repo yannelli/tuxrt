@@ -81,3 +81,7 @@ npm run typecheck
 - `ping` and `traceroute` approximate ICMP with TCP connects, as described above.
 - `node` uses `node:vm` for isolation from the host filesystem, which makes it a convenience sandbox rather than a security boundary.
 - Bash arrays and `trap` are not implemented.
+
+## License
+
+[MIT](LICENSE) © Ryan Yannelli. Ubuntu is a trademark of Canonical Ltd. tuxrt emulates its command-line behavior and is not affiliated with or endorsed by Canonical.
