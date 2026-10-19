@@ -49,6 +49,8 @@ export class Shell {
   /** Exit status of the last command substitution in the current command, if any ran. */
   lastSubst: number | null = null;
   lastBg = 0;
+  /** Process entry of a background job, adopted by its first command so `cmd &` is one process, as in bash. */
+  jobProc: number | null = null;
   pid: number;
   user: User;
   interactive = false;
@@ -68,8 +70,11 @@ export class Shell {
     return this.job.signal;
   }
 
+  private fs: VFS | null = null;
+
+  /** This shell's view of the filesystem, carrying its own credentials. */
   get vfs(): VFS {
-    return this.kernel.vfs;
+    return (this.fs ??= this.kernel.vfs.view({ uid: this.user.uid, gid: this.user.gid, groups: this.user.groups }));
   }
 
   get cwd(): string {
@@ -139,6 +144,7 @@ export class Shell {
     s.status = this.status;
     s.lastBg = this.lastBg;
     s.job = this.job;
+    s.fs = this.vfs.view(this.vfs.cred);
     return s;
   }
 }

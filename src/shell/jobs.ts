@@ -12,6 +12,7 @@ export function startJob(node: Node, shell: Shell, io: IO): number {
   sub.job = controller;
   const cmd = describe(node);
   const proc = procs.spawn(cmd, shell.user.uid, shell.pid, controller);
+  if (node.type === 'cmd') sub.jobProc = proc.pid;
   const id = Math.max(0, ...jobs.keys()) + 1;
   const job: Job = { id, pid: proc.pid, cmd, done: false, code: 0, controller, promise: Promise.resolve(0) };
   job.promise = exec(node, sub, { ...io, stdin: EMPTY })

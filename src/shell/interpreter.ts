@@ -7,7 +7,7 @@ import { BrokenPipe, Pipe, type IO } from './io.ts';
 import { startJob } from './jobs.ts';
 import { ParamError } from './params.ts';
 import { parse } from './parser.ts';
-import { applyRedirs, RedirError } from './redirect.ts';
+import { openRedirs, RedirError } from './redirect.ts';
 import type { Shell } from './shell.ts';
 import { execSimple } from './simple.ts';
 
@@ -81,8 +81,10 @@ export async function exec(node: Node, shell: Shell, io: IO): Promise<number> {
       return runNode(shell.fork(), node.body, io, { subshell: true });
     case 'group':
       return exec(node.body, shell, io);
-    case 'redirect':
-      return exec(node.body, shell, await applyRedirs(node.redirs, shell, io));
+    case 'redirect': {
+      const redirected = await openRedirs(node.redirs, shell, io);
+      return redirected ? exec(node.body, shell, redirected) : 1;
+    }
     case 'func':
       shell.functions.set(node.name, node.body);
       return 0;

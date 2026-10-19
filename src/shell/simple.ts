@@ -7,7 +7,7 @@ import { BrokenPipe, type IO } from './io.ts';
 import { ParamError } from './params.ts';
 import { parse } from './parser.ts';
 import { shellQuote } from './quote.ts';
-import { applyRedirs, RedirError } from './redirect.ts';
+import { openRedirs, RedirError } from './redirect.ts';
 import { resolveCommand } from './resolve.ts';
 import { runScriptFile } from './script.ts';
 import type { Shell } from './shell.ts';
@@ -31,11 +31,11 @@ export async function execSimple(node: CmdNode, shell: Shell, io: IO): Promise<n
   }
   if (!argv.length) {
     for (const [name, value] of assigns) shell.set(name, value);
-    await applyRedirs(node.redirs, shell, io);
-    return shell.lastSubst ?? 0;
+    return (await openRedirs(node.redirs, shell, io)) ? (shell.lastSubst ?? 0) : 1;
   }
 
-  const cmdIO = await applyRedirs(node.redirs, shell, io);
+  const cmdIO = await openRedirs(node.redirs, shell, io);
+  if (!cmdIO) return 1;
   if (shell.options.xtrace) io.stderr.write(`+ ${[...assigns.map(([k, v]) => `${k}=${shellQuote(v)}`), ...argv.map(shellQuote)].join(' ')}\n`);
 
   const saved = assigns.map(([name]) => [name, shell.vars.get(name), shell.exported.has(name)] as const);
@@ -81,6 +81,10 @@ export async function dispatch(argv: string[], shell: Shell, io: IO): Promise<nu
     case 'builtin':
       return runCommand(found.def, name, args, shell, io);
     case 'binary': {
+      if (shell.jobProc !== null) {
+        shell.jobProc = null;
+        return runCommand(found.def, name, args, shell, io);
+      }
       const proc = shell.kernel.procs.spawn(argv.join(' '), shell.user.uid, shell.pid, shell.job);
       try {
         return await runCommand(found.def, name, args, shell, io);
@@ -119,8 +123,8 @@ async function callFunction(body: Node, args: string[], shell: Shell, io: IO): P
 const passthrough = [BrokenPipe, ExitSignal, ReturnSignal, BreakSignal, ContinueSignal, Interrupt, ParamError, RedirError];
 
 async function runCommand(def: CommandDef, name: string, args: string[], shell: Shell, io: IO): Promise<number> {
-  shell.vfs.cred = { uid: shell.user.uid, gid: shell.user.gid, groups: shell.user.groups };
-  const ctx: Ctx = { name, args, ...io, shell, vfs: shell.vfs, signal: shell.signal, env: shell.env() };
+  const { stdin, stdout, stderr } = io;
+  const ctx: Ctx = { name, args, stdin, stdout, stderr, shell, vfs: shell.vfs, signal: shell.signal, env: shell.env() };
   try {
     return await def.fn(ctx);
   } catch (e) {

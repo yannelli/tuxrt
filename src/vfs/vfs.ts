@@ -11,7 +11,8 @@ export class VFS {
   root: DirNode;
   cred: Cred = { uid: 0, gid: 0, groups: [] };
   umask = 0o022;
-  private nextIno = 1;
+  /** Boxed so views created by `view()` share one inode counter with the base filesystem. */
+  private readonly inodes = { next: 1 };
 
   constructor() {
     this.root = this.newDir(0o755);
@@ -19,7 +20,7 @@ export class VFS {
 
   private base(mode: number) {
     const now = Date.now();
-    return { ino: this.nextIno++, mode, nlink: 1, uid: this.cred.uid, gid: this.cred.gid, mtime: now, ctime: now };
+    return { ino: this.inodes.next++, mode, nlink: 1, uid: this.cred.uid, gid: this.cred.gid, mtime: now, ctime: now };
   }
 
   newDir(mode = 0o777 & ~this.umask): DirNode {
@@ -32,6 +33,13 @@ export class VFS {
 
   newLink(target: string): LinkNode {
     return { ...this.base(0o777), kind: 'symlink', target };
+  }
+
+  /** Same tree and state, separate credentials and umask: one per shell/process, like Linux. */
+  view(cred: Cred): VFS {
+    const v = Object.create(this) as VFS;
+    v.cred = { ...cred, groups: [...cred.groups] };
+    return v;
   }
 
   can(node: VNode, want: number): boolean {

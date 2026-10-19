@@ -12,6 +12,12 @@ export const SIGNALS: Record<string, number> = {
   HUP: 1, INT: 2, QUIT: 3, KILL: 9, USR1: 10, USR2: 12, PIPE: 13, ALRM: 14, TERM: 15, CONT: 18, STOP: 19,
 };
 
+export function parseSignal(spec: string): number | undefined {
+  const name = spec.replace(/^-/, '').replace(/^SIG/i, '').toUpperCase();
+  if (/^\d+$/.test(name)) return Number(name) <= 64 ? Number(name) : undefined;
+  return SIGNALS[name];
+}
+
 /** The emulated kernel's process table: system daemons plus every command the shell spawns. */
 export class ProcessTable {
   readonly procs = new Map<number, Proc>();

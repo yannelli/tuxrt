@@ -1,5 +1,5 @@
 import { findJob } from '../../shell/jobs.ts';
-import { SIGNALS } from '../../shell/process.ts';
+import { parseSignal, SIGNALS } from '../../shell/process.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { bfail } from '../util.ts';
 
@@ -8,7 +8,7 @@ function jobs(ctx: Ctx): number {
   all.forEach((j, i) => {
     if (ctx.args.includes('-p')) return ctx.stdout.write(`${j.pid}\n`);
     const mark = i === all.length - 1 ? '+' : i === all.length - 2 ? '-' : ' ';
-    const state = j.done ? (j.code ? `Exit ${j.code}` : 'Done') : 'Running';
+    const state = j.done ? (j.code > 128 ? 'Terminated' : j.code ? `Exit ${j.code}` : 'Done') : 'Running';
     const pid = ctx.args.includes('-l') ? ` ${j.pid}` : '';
     ctx.stdout.write(`[${j.id}]${mark}${pid} ${state.padEnd(24)}${j.cmd}${j.done ? '' : ' &'}\n`);
   });
@@ -40,12 +40,6 @@ async function wait(ctx: Ctx): Promise<number> {
     if (job.done) jobs.delete(job.id);
   }
   return code;
-}
-
-function parseSignal(spec: string): number | undefined {
-  const name = spec.replace(/^-/, '').replace(/^SIG/i, '').toUpperCase();
-  if (/^\d+$/.test(name)) return Number(name);
-  return SIGNALS[name];
 }
 
 function kill(ctx: Ctx): number {

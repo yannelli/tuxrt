@@ -61,7 +61,7 @@ function exit(ctx: Ctx): number {
     bfail(ctx, `${ctx.args[0]}: numeric argument required`);
     throw new ExitSignal(2);
   }
-  const prev = shell.interactive ? shell.logins.pop() : undefined;
+  const prev = shell.logins.pop();
   if (prev) {
     ctx.stdout.write('logout\n');
     shell.vars = prev.vars;

@@ -22,6 +22,17 @@ class FileWriter implements Writer {
   }
 }
 
+/** Like applyRedirs, but reports failures bash-style and returns null so only this command fails. */
+export async function openRedirs(redirs: Redir[], shell: Shell, io: IO): Promise<IO | null> {
+  try {
+    return await applyRedirs(redirs, shell, io);
+  } catch (e) {
+    if (!(e instanceof RedirError)) throw e;
+    io.stderr.write(`${shell.argv0}: ${e.message}\n`);
+    return null;
+  }
+}
+
 /** Applies redirections left to right, returning the new IO. Throws RedirError with a bash-style message. */
 export async function applyRedirs(redirs: Redir[], shell: Shell, io: IO): Promise<IO> {
   const fds: (Reader | Writer)[] = [io.stdin, io.stdout, io.stderr];
