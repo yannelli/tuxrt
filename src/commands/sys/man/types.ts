@@ -33,3 +33,11 @@ export interface Builtin {
   summary: string;
   text: string;
 }
+
+export const GNU_HELP: [string, string][] = [
+  ['--help', 'display this help and exit'],
+  ['--version', 'output version information and exit'],
+];
+
+export const coreutilsDocs = (name: string): string =>
+  `Full documentation <https://www.gnu.org/software/coreutils/${name}>\nor available locally via: info '(coreutils) ${name} invocation'`;

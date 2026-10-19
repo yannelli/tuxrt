@@ -1,16 +1,8 @@
-import type { CommandDef, CommandTable, Ctx } from '../types.ts';
-
-const ADMIN = new Set([
-  'useradd', 'userdel', 'usermod', 'groupadd', 'groupdel', 'adduser', 'chpasswd', 'reboot', 'shutdown', 'poweroff', 'halt',
-  'service', 'ip', 'ping', 'sudo', 'lsblk', 'apt', 'apt-get', 'sync',
-]);
-
-const section = (name: string) => (ADMIN.has(name) ? 8 : 1);
-
-function manual(ctx: Ctx, name: string): CommandDef | undefined {
-  const def = ctx.shell.kernel.commands.get(name);
-  return def && (!def.builtin || def.stub) ? def : undefined;
-}
+import type { CommandTable, Ctx } from '../types.ts';
+import { command, parseArgs } from '../util.ts';
+import { lookup, MANPATH, readPage } from './man/lookup.ts';
+import { render } from './man/render.ts';
+import { apropos, env, mandb, runApropos, runWhatis, searchOpts, whatis } from './man/search.ts';
 
 function executable(ctx: Ctx, path: string): boolean {
   const node = ctx.vfs.tryLookup(path);
@@ -37,77 +29,87 @@ function whereis(ctx: Ctx): number {
   const manOnly = ctx.args.includes('-m');
   for (const name of ctx.args.filter((a) => !a.startsWith('-'))) {
     const bins = ['/usr/bin', '/usr/sbin', '/usr/local/bin', '/usr/local/sbin'].map((d) => `${d}/${name}`).filter((p) => ctx.vfs.exists(p));
-    const sec = section(name);
-    const pages = manual(ctx, name) ? [`/usr/share/man/man${sec}/${name}.${sec}.gz`] : [];
+    const pages = lookup(ctx, name).map((e) => e.path);
     const found = [...(manOnly ? [] : bins), ...(binOnly ? [] : pages)];
     ctx.stdout.write(`${name}:${found.map((p) => ` ${p}`).join('')}\n`);
   }
   return 0;
 }
 
-function whatisLine(name: string, desc: string): string {
-  return `${`${name} (${section(name)})`.padEnd(21)}- ${desc}\n`;
-}
+const MAN_SPEC = {
+  flags: 'afkwWlhV',
+  values: 'sSMPCLm',
+  long: {
+    all: 'a', whatis: 'f', apropos: 'k', where: 'w', path: 'w', location: 'w', 'where-cat': 'W', 'location-cat': 'W',
+    'local-file': 'l', 'sections=': 's', 'manpath=': 'M', 'pager=': 'P', 'config-file=': 'C', 'locale=': 'L', help: 'h', version: 'V',
+  },
+};
 
-function whatis(ctx: Ctx): number {
-  let status = 0;
-  for (const name of ctx.args.filter((a) => !a.startsWith('-'))) {
-    const def = manual(ctx, name);
-    if (def) ctx.stdout.write(whatisLine(name, def.desc));
-    else status = (ctx.stdout.write(`${name}: nothing appropriate.\n`), 16);
-  }
-  return status;
-}
+const USAGE = `Usage: man [OPTION...] [SECTION] PAGE...
 
-function apropos(ctx: Ctx): number {
-  const words = ctx.args.filter((a) => !a.startsWith('-'));
-  if (!words.length) return (ctx.stderr.write('apropos what?\n'), 1);
-  const entries = [...ctx.shell.kernel.commands.keys()].sort().map((n) => [n, manual(ctx, n)] as const);
-  let status = 0;
-  for (const word of words) {
-    const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    const hits = entries.filter(([n, def]) => def && (re.test(n) || re.test(def.desc)));
-    if (!hits.length) status = (ctx.stdout.write(`${word}: nothing appropriate.\n`), 16);
-    for (const [n, def] of hits) ctx.stdout.write(whatisLine(n, def!.desc));
-  }
-  return status;
+  -a, --all                  find all matching manual pages
+  -f, --whatis               equivalent to whatis
+  -k, --apropos              equivalent to apropos
+  -l, --local-file           interpret PAGE argument(s) as local filename(s)
+  -s, --sections=LIST        use colon separated section list
+  -w, --where, --path, --location
+                             print physical location of man page(s)
+  -h, --help                 give this help list
+  -V, --version              print program version
+
+Pages are formatted for MANWIDTH or COLUMNS (default 80) columns.
+`;
+
+const SECTION = /^(\d\w*|n|l)$/;
+
+/** Splits "passwd(5)" and "passwd.5" style references into name and section. */
+function reference(arg: string): [string, string] | undefined {
+  const m = /^(.+)\((\w+)\)$/.exec(arg) ?? /^(.+)\.(\d\w*)$/.exec(arg);
+  return m ? [m[1], m[2]] : undefined;
 }
 
 function man(ctx: Ctx): number {
-  const args = ctx.args.filter((a) => !/^\d[a-z]?$/.test(a));
-  if (args[0] === '-k') return apropos({ ...ctx, args: args.slice(1) });
-  if (args[0] === '-f') return whatis({ ...ctx, args: args.slice(1) });
-  const names = args.filter((a) => !a.startsWith('-'));
-  if (!names.length) return (ctx.stderr.write("What manual page do you want?\nFor example, try 'man man'.\n"), 1);
+  const { opts, operands } = parseArgs(ctx.args, MAN_SPEC);
+  if (opts.h) return (ctx.stdout.write(USAGE), 0);
+  if (opts.V) return (ctx.stdout.write('man 2.12.0\n'), 0);
+  let { sections } = searchOpts(opts);
+  if (opts.k) return runApropos(ctx, operands, { sections, mode: 'regex' });
+  if (opts.f) return runWhatis(ctx, operands, { sections, mode: 'exact' });
+  if (!operands.length) {
+    if (opts.w) return (ctx.stdout.write(`${MANPATH.join(':')}\n`), 0);
+    ctx.stderr.write("What manual page do you want?\nFor example, try 'man man'.\n");
+    return 1;
+  }
+  const width = Number(env(ctx, 'MANWIDTH')) || Number(env(ctx, 'COLUMNS')) || 80;
+  const show = (roff: string) => ctx.stdout.write(render(roff, width, !!ctx.stdout.isTTY));
   let status = 0;
-  for (const name of names) {
-    const def = manual(ctx, name);
-    if (!def) {
-      status = (ctx.stderr.write(`No manual entry for ${name}\n`), 16);
+  for (let i = 0; i < operands.length; i++) {
+    const arg = operands[i];
+    if (SECTION.test(arg) && i + 1 < operands.length) {
+      sections = [arg];
       continue;
     }
-    const sec = section(name);
-    const tag = `${name.toUpperCase()}(${sec})`;
-    const title = sec === 8 ? 'System Administration' : 'User Commands';
-    const left = Math.floor((80 - title.length) / 2);
-    const desc = def.desc.charAt(0).toUpperCase() + def.desc.slice(1).replace(/\.?$/, '.');
-    ctx.stdout.write([
-      `${tag.padEnd(left)}${title}`.padEnd(80 - tag.length) + tag,
-      '',
-      'NAME',
-      `       ${name} - ${def.desc}`,
-      '',
-      'SYNOPSIS',
-      `       ${name} [OPTION]... [ARGUMENT]...`,
-      '',
-      'DESCRIPTION',
-      `       ${desc}`,
-      '',
-      `       Run '${name} --help' for a summary of options.`,
-      '',
-      `${'tuxrt'.padEnd(left)}${'October 2026'}`.padEnd(80 - tag.length) + tag,
-      '',
-    ].join('\n'));
+    if (opts.l || arg.includes('/')) {
+      try {
+        if (opts.w) ctx.stdout.write(`${arg}\n`);
+        else show(readPage(ctx, ctx.shell.abs(arg)));
+      } catch (e) {
+        status = (ctx.stderr.write(`man: ${arg}: ${(e as Error).message}\n`), 16);
+      }
+      continue;
+    }
+    let found = lookup(ctx, arg, sections);
+    const ref = found.length ? undefined : reference(arg);
+    if (ref) found = lookup(ctx, ref[0], [ref[1]]);
+    if (!found.length) {
+      const where = sections?.length === 1 ? ` in section ${sections[0]}` : '';
+      status = (ctx.stderr.write(`No manual entry for ${arg}${where}\n`), 16);
+      continue;
+    }
+    for (const entry of opts.a ? found : found.slice(0, 1)) {
+      if (opts.w || opts.W) ctx.stdout.write(`${entry.path}\n`);
+      else show(entry.roff());
+    }
   }
   return status;
 }
@@ -117,9 +119,10 @@ const CLEAR = '\x1b[H\x1b[2J\x1b[3J';
 export const docCommands: CommandTable = {
   which: { fn: which, desc: 'locate a command' },
   whereis: { fn: whereis, desc: 'locate the binary, source, and manual page files for a command' },
-  man: { fn: man, desc: 'an interface to the system reference manuals' },
-  whatis: { fn: whatis, desc: 'display one-line manual page descriptions' },
-  apropos: { fn: apropos, desc: 'search the manual page names and descriptions' },
+  man: { fn: command(man), desc: 'an interface to the system reference manuals' },
+  whatis: { fn: command(whatis), desc: 'display one-line manual page descriptions' },
+  apropos: { fn: command(apropos), desc: 'search the manual page names and descriptions' },
+  mandb: { fn: command(mandb), desc: 'create or update the manual page index caches' },
   clear: { fn: (ctx) => (ctx.stdout.write(ctx.args.includes('-x') ? '\x1b[H\x1b[2J' : CLEAR), 0), desc: 'clear the terminal screen' },
   reset: { fn: (ctx) => (ctx.stdout.write(CLEAR), 0), desc: 'terminal initialization' },
 };

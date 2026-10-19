@@ -79,6 +79,8 @@ const dirs: [string, number][] = [
   ['/usr', 0o755], ['/usr/bin', 0o755], ['/usr/sbin', 0o755], ['/usr/lib', 0o755],
   ['/usr/local', 0o755], ['/usr/local/bin', 0o755], ['/usr/local/sbin', 0o755], ['/usr/local/lib', 0o755],
   ['/usr/share', 0o755], ['/usr/share/doc', 0o755], ['/usr/include', 0o755],
+  ['/usr/share/man', 0o755], ['/usr/share/man/man1', 0o755], ['/usr/share/man/man5', 0o755],
+  ['/usr/share/man/man7', 0o755], ['/usr/share/man/man8', 0o755], ['/usr/local/share', 0o755], ['/usr/local/share/man', 0o755],
   ['/etc', 0o755], ['/etc/profile.d', 0o755], ['/etc/skel', 0o755], ['/etc/apt', 0o755],
   ['/var', 0o755], ['/var/log', 0o775], ['/var/tmp', 0o1777], ['/var/lib', 0o755], ['/var/cache', 0o755],
   ['/var/www', 0o755], ['/var/mail', 0o2775],
