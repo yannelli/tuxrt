@@ -3,12 +3,12 @@ import { lineReader } from '../../../shell/io.ts';
 import { NODE_VERSION, ProcessExit } from './errors.ts';
 import type { NodeRuntime } from './runtime.ts';
 
-const HELP = `.break     Sometimes you get stuck, this gets you out
-.clear     Alias for .break
-.exit      Exit the REPL
-.help      Print this help message
+const HELP = `.break     Discard a multi-line input in progress
+.clear     Same as .break
+.exit      Leave the REPL
+.help      List these commands
 
-Press Ctrl+C to abort current expression, Ctrl+D to exit the REPL
+Ctrl+C cancels the current input; Ctrl+D quits.
 `;
 
 const INCOMPLETE = /Unexpected end of input|Unterminated template literal|missing \) after argument list/;

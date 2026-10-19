@@ -114,5 +114,5 @@ function truncate(ctx: Ctx): number {
 
 export const touchCommands: CommandTable = {
   touch: { desc: 'change file timestamps', fn: command(touch) },
-  truncate: { desc: 'shrink or extend the size of a file to the specified size', fn: command(truncate) },
+  truncate: { desc: 'set a file to a given size', fn: command(truncate) },
 };

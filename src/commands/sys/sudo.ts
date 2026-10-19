@@ -106,5 +106,5 @@ async function su(ctx: Ctx): Promise<number> {
 
 export const sudoCommands: CommandTable = {
   sudo: { fn: command(sudo), desc: 'execute a command as another user' },
-  su: { fn: su, desc: 'run a command with substitute user and group ID' },
+  su: { fn: su, desc: 'run a command as another user' },
 };

@@ -90,24 +90,22 @@ export function progressMeter(size: number, known: boolean, ms: number): string 
 }
 
 export const CURL_HELP = `Usage: curl [options...] <url>
- -d, --data <data>           HTTP POST data
- -f, --fail                  Fail fast with no output on HTTP errors
- -h, --help <category>       Get help for commands
- -H, --header <header/@file> Pass custom header(s) to server
- -i, --include               Include protocol response headers in the output
- -I, --head                  Show document info only
- -L, --location              Follow redirects
- -o, --output <file>         Write to file instead of stdout
- -O, --remote-name           Write output to a file named as the remote file
- -s, --silent                Silent mode
- -S, --show-error            Show error even when -s is used
- -u, --user <user:password>  Server user and password
- -A, --user-agent <name>     Send User-Agent <name> to server
- -v, --verbose               Make the operation more talkative
- -w, --write-out <format>    Use output FORMAT after completion
- -X, --request <method>      Specify request method to use
+ -d, --data <data>           Send <data> as a POST body
+ -f, --fail                  Exit with an error and print nothing on HTTP 4xx/5xx
+ -h, --help <category>       Print this option summary
+ -H, --header <header/@file> Add a request header (repeatable)
+ -i, --include               Print response headers before the body
+ -I, --head                  Make a HEAD request and print only headers
+ -L, --location              Follow 3xx redirects
+ -o, --output <file>         Save the body to <file> rather than stdout
+ -O, --remote-name           Save the body under the URL's file name
+ -s, --silent                Hide the progress meter and errors
+ -S, --show-error            Still print errors when -s is given
+ -u, --user <user:password>  Credentials for server authentication
+ -A, --user-agent <name>     Value for the User-Agent header
+ -v, --verbose               Trace the request and response on stderr
+ -w, --write-out <format>    Print <format> once the transfer ends
+ -X, --request <method>      HTTP method to use instead of the default
 
-This is not the full help, this menu is stripped into categories.
-Use "--help category" to get an overview of all categories.
-For all options use the manual or "--help all".
+Only the options this runtime supports are listed here.
 `;

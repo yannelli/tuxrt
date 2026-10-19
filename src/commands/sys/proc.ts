@@ -205,8 +205,8 @@ function killall(ctx: Ctx): number {
 }
 
 export const procCommands: CommandTable = {
-  ps: { fn: command(ps), desc: 'report a snapshot of the current processes.' },
-  pgrep: { fn: command(pgrep), desc: 'look up processes based on name and other attributes' },
-  pkill: { fn: command(pkill), desc: 'signal processes based on name and other attributes' },
+  ps: { fn: command(ps), desc: 'list running processes' },
+  pgrep: { fn: command(pgrep), desc: 'find processes by name' },
+  pkill: { fn: command(pkill), desc: 'signal processes by name' },
   killall: { fn: command(killall), desc: 'kill processes by name' },
 };

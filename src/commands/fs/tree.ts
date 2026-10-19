@@ -85,5 +85,5 @@ async function tree(ctx: Ctx): Promise<number> {
 }
 
 export const treeCommands: CommandTable = {
-  tree: { desc: 'list contents of directories in a tree-like format', fn: command(tree) },
+  tree: { desc: 'show a directory as a tree', fn: command(tree) },
 };

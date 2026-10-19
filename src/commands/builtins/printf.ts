@@ -73,5 +73,5 @@ function printf(ctx: Ctx): number {
 }
 
 export const printfBuiltins: CommandTable = {
-  printf: { fn: printf, builtin: true, stub: true, desc: 'Formats and prints arguments under control of the format' },
+  printf: { fn: printf, builtin: true, stub: true, desc: 'Print arguments using a format string' },
 };

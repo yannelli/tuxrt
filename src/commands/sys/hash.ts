@@ -117,6 +117,6 @@ export const hashCommands: CommandTable = {
   sha256sum: hasher('sha256', 'SHA256'),
   sha384sum: hasher('sha384', 'SHA384'),
   sha512sum: hasher('sha512', 'SHA512'),
-  base64: { fn: command(base64), desc: 'base64 encode/decode data and print to standard output' },
+  base64: { fn: command(base64), desc: 'encode or decode base64 data' },
   cksum: { fn: cksum, desc: 'compute and verify file checksums' },
 };

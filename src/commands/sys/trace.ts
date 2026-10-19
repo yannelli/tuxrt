@@ -79,7 +79,7 @@ async function tracepath(ctx: Ctx): Promise<number> {
 }
 
 export const traceCommands: CommandTable = {
-  traceroute: { fn: command(traceroute), desc: 'print the route packets trace to network host' },
-  traceroute6: { fn: command(traceroute), desc: 'print the route packets trace to network host' },
-  tracepath: { fn: command(tracepath), desc: 'traces path to a network host discovering MTU along this path' },
+  traceroute: { fn: command(traceroute), desc: 'show the hops to a network host' },
+  traceroute6: { fn: command(traceroute), desc: 'show the hops to a network host' },
+  tracepath: { fn: command(tracepath), desc: 'trace the path and MTU to a host' },
 };

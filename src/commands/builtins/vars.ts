@@ -234,14 +234,14 @@ function getopts(ctx: Ctx): number {
 
 export const varBuiltins: CommandTable = {
   export: { fn: exportCmd, builtin: true, desc: 'Set export attribute for shell variables' },
-  unset: { fn: unset, builtin: true, desc: 'Unset values and attributes of shell variables' },
-  set: { fn: set, builtin: true, desc: 'Set or unset values of shell options and positional parameters' },
+  unset: { fn: unset, builtin: true, desc: 'Remove variables or functions' },
+  set: { fn: set, builtin: true, desc: 'Change shell options or positional args' },
   shift: { fn: shift, builtin: true, desc: 'Shift positional parameters' },
   local: { fn: local, builtin: true, desc: 'Define local variables' },
   declare: { fn: declare, builtin: true, desc: 'Set variable values and attributes' },
   typeset: { fn: declare, builtin: true, desc: 'Set variable values and attributes' },
   readonly: { fn: declare, builtin: true, desc: 'Mark shell variables as unchangeable' },
   let: { fn: letCmd, builtin: true, desc: 'Evaluate arithmetic expressions' },
-  read: { fn: read, builtin: true, desc: 'Read a line from the standard input and split it into fields' },
+  read: { fn: read, builtin: true, desc: 'Read a stdin line into variables' },
   getopts: { fn: getopts, builtin: true, desc: 'Parse option arguments' },
 };

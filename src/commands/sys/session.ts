@@ -101,10 +101,10 @@ function last(ctx: Ctx): number {
 }
 
 export const sessionCommands: CommandTable = {
-  uptime: { fn: command(uptime), desc: 'Tell how long the system has been running.' },
-  free: { fn: command(free), desc: 'Display amount of free and used memory in the system' },
-  w: { fn: command(w), desc: 'Show who is logged on and what they are doing.' },
+  uptime: { fn: command(uptime), desc: 'Show system uptime and load' },
+  free: { fn: command(free), desc: 'Report memory and swap usage' },
+  w: { fn: command(w), desc: 'List logged-in users and their activity' },
   who: { fn: command(who), desc: 'show who is logged on' },
-  users: { fn: (ctx) => (ctx.stdout.write(`${loginUser(ctx.shell).name}\n`), 0), desc: 'print the user names of users currently logged in to the current host' },
-  last: { fn: last, desc: 'show a listing of last logged in users' },
+  users: { fn: (ctx) => (ctx.stdout.write(`${loginUser(ctx.shell).name}\n`), 0), desc: 'list logged-in user names' },
+  last: { fn: last, desc: 'list recent logins' },
 };

@@ -22,21 +22,21 @@ interface GzOpts {
 const SUFFIXES: [string, string][] = [['.gz', ''], ['.tgz', '.tar'], ['.taz', '.tar'], ['.z', ''], ['-gz', ''], ['-z', ''], ['_z', '']];
 
 const HELP = `Usage: gzip [OPTION]... [FILE]...
-Compress or uncompress FILEs (by default, compress FILES in-place).
+Shrink each FILE with DEFLATE, replacing it with FILE.gz (or the reverse with -d).
 
-  -c, --stdout      write on standard output, keep original files unchanged
-  -d, --decompress  decompress
-  -f, --force       force overwrite of output file and compress links
-  -h, --help        give this help
-  -k, --keep        keep (don't delete) input files
-  -n, --no-name     do not save or restore the original name and timestamp
-  -q, --quiet       suppress all warnings
-  -t, --test        test compressed file integrity
-  -v, --verbose     verbose mode
-  -1, --fast        compress faster
-  -9, --best        compress better
+  -c, --stdout      send the result to stdout and leave inputs alone
+  -d, --decompress  expand .gz files instead of creating them
+  -f, --force       replace existing outputs; also follow symlinks
+  -h, --help        show this summary and exit
+  -k, --keep        do not remove the input after success
+  -n, --no-name     ignore the stored file name and mtime
+  -q, --quiet       hide warnings
+  -t, --test        check that compressed files decode cleanly
+  -v, --verbose     report the name and ratio of each file
+  -1, --fast        favour speed over size
+  -9, --best        favour size over speed
 
-With no FILE, or when FILE is -, read standard input.
+Reads stdin when FILE is omitted or is -.
 `;
 
 class Run {

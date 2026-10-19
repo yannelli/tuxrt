@@ -97,5 +97,5 @@ async function sed(ctx: Ctx): Promise<number> {
 }
 
 export const sedCommands: CommandTable = {
-  sed: { fn: command(sed), desc: 'stream editor for filtering and transforming text' },
+  sed: { fn: command(sed), desc: 'edit text streams with a script' },
 };

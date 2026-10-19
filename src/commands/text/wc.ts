@@ -62,5 +62,5 @@ async function wc(ctx: Ctx): Promise<number> {
 }
 
 export const wcCommands: CommandTable = {
-  wc: { fn: command(wc), desc: 'print newline, word, and byte counts for each file' },
+  wc: { fn: command(wc), desc: 'count lines, words and bytes' },
 };

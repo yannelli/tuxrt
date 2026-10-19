@@ -47,17 +47,17 @@ const MAN_SPEC = {
 
 const USAGE = `Usage: man [OPTION...] [SECTION] PAGE...
 
-  -a, --all                  find all matching manual pages
-  -f, --whatis               equivalent to whatis
-  -k, --apropos              equivalent to apropos
-  -l, --local-file           interpret PAGE argument(s) as local filename(s)
-  -s, --sections=LIST        use colon separated section list
+  -a, --all                  show every matching page, not just the first
+  -f, --whatis               print one-line descriptions (same as whatis)
+  -k, --apropos              search names and descriptions (same as apropos)
+  -l, --local-file           treat each PAGE as a path to a page file
+  -s, --sections=LIST        only look in these sections (colon separated)
   -w, --where, --path, --location
-                             print physical location of man page(s)
-  -h, --help                 give this help list
-  -V, --version              print program version
+                             print where each page lives instead of showing it
+  -h, --help                 show this summary
+  -V, --version              show the version
 
-Pages are formatted for MANWIDTH or COLUMNS (default 80) columns.
+Pages are laid out for MANWIDTH or COLUMNS (default 80) columns.
 `;
 
 const SECTION = /^(\d\w*|n|l)$/;

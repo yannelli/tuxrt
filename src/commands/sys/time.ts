@@ -112,8 +112,8 @@ function timedatectl(ctx: Ctx): number {
 }
 
 export const timeCommands: CommandTable = {
-  date: { fn: command(date), desc: 'print or set the system date and time' },
+  date: { fn: command(date), desc: 'show or change the date and time' },
   cal: { fn: command(cal), desc: 'display a calendar' },
-  sleep: { fn: sleepCmd, desc: 'delay for a specified amount of time' },
+  sleep: { fn: sleepCmd, desc: 'pause for a given duration' },
   timedatectl: { fn: timedatectl, desc: 'Control the system time and date' },
 };

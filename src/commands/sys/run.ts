@@ -160,10 +160,10 @@ async function watch(ctx: Ctx): Promise<number> {
 }
 
 export const runCommands: CommandTable = {
-  env: { fn: env, desc: 'run a program in a modified environment' },
+  env: { fn: env, desc: 'run a program with a changed environment' },
   printenv: { fn: printenv, desc: 'print all or part of environment' },
   time: { fn: time, builtin: true, desc: 'Report time consumed by pipeline\'s execution' },
-  timeout: { fn: timeout, desc: 'run a command with a time limit' },
-  nohup: { fn: nohup, desc: 'run a command immune to hangups, with output to a non-tty' },
-  watch: { fn: watch, desc: 'execute a program periodically, showing output fullscreen' },
+  timeout: { fn: timeout, desc: 'stop a command after a deadline' },
+  nohup: { fn: nohup, desc: 'run a command that survives hangup' },
+  watch: { fn: watch, desc: 'rerun a command and show its output' },
 };

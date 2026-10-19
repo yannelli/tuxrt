@@ -20,12 +20,11 @@ interface Source {
   st: Stat;
 }
 
-const USAGE = `Copyright (c) 1990-2008 Info-ZIP - Type 'zip "-L"' for software license.
-Zip 3.0 (July 5th 2008). Usage:
+const USAGE = `Zip 3.0 (July 5th 2008). Usage:
 zip [-options] [-b path] [-t mmddyyyy] [-n suffixes] [zipfile list] [-xi list]
-  The default action is to add or replace zipfile entries from list.
-  -r   recurse into directories     -j   junk (don't record) directory names
-  -q   quiet operation              -y   store symbolic links as the link
+  Adds each file in list to zipfile, updating entries that already exist.
+  -r   descend into directories     -j   store bare file names, no paths
+  -q   print nothing                -y   archive symlinks themselves
 `;
 
 /** Info-ZIP's percent(): rounds half up and never reports negative savings. */

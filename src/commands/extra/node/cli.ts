@@ -6,19 +6,18 @@ import { NodeRuntime, type Main } from './runtime.ts';
 const HELP = `Usage: node [options] [ script.js ] [arguments]
 
 Options:
-  -                           script read from stdin (default if no file name is
-                              provided, interactive mode if a tty)
-  --                          indicate the end of node options
-  -c, --check                 syntax check script without executing
-  -e, --eval=...              evaluate script
-  -h, --help                  print node command line options
-  -i, --interactive           always enter the REPL even if stdin does not appear
-                              to be a terminal
-  -p, --print [...]           evaluate script and print result
-  -r, --require=...           CommonJS module to preload (option can be repeated)
-  -v, --version               print Node.js version
+  -                           run code piped on stdin (the default with no
+                              script; opens the REPL on a terminal)
+  --                          stop parsing node options here
+  -c, --check                 parse the script and report syntax errors only
+  -e, --eval=...              run the given source text
+  -h, --help                  show this summary
+  -i, --interactive           open the REPL even when stdin is not a terminal
+  -p, --print [...]           like -e, then print the resulting value
+  -r, --require=...           load a CommonJS module first (repeatable)
+  -v, --version               show the Node.js version
 
-Documentation can be found at https://nodejs.org/
+More at https://nodejs.org/
 `;
 
 // Accepted for compatibility; they change nothing in the sandbox.

@@ -63,7 +63,7 @@ function listUnits(ctx: Ctx, all: boolean): number {
     const [active, sub] = isActive(ctx, u) ? ['active', 'running'] : ['inactive', 'dead'];
     ctx.stdout.write(`  ${`${u.name}.service`.padEnd(width)} loaded ${active.padEnd(8)} ${sub.padEnd(7)} ${u.desc}\n`);
   }
-  ctx.stdout.write('\nLOAD   = Reflects whether the unit definition was properly loaded.\nACTIVE = The high-level unit activation state, i.e. generalization of SUB.\nSUB    = The low-level unit activation state, values depend on unit type.\n');
+  ctx.stdout.write('\nLOAD   = Whether the unit file was read and parsed.\nACTIVE = Overall state, a summary of SUB.\nSUB    = Detailed state; the possible values vary by unit type.\n');
   ctx.stdout.write(`${shown.length} loaded units listed.${all ? '' : ' Pass --all to see loaded but inactive units, too.'}\n`);
   return 0;
 }
@@ -119,6 +119,6 @@ function service(ctx: Ctx): number {
 }
 
 export const systemdCommands: CommandTable = {
-  systemctl: { fn: systemctl, desc: 'Control the systemd system and service manager' },
+  systemctl: { fn: systemctl, desc: 'Manage systemd services and units' },
   service: { fn: service, desc: 'run a System V init script' },
 };

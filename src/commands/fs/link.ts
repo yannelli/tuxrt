@@ -147,6 +147,6 @@ function realpath(ctx: Ctx): number {
 
 export const linkCommands: CommandTable = {
   ln: { desc: 'make links between files', fn: command(ln) },
-  readlink: { desc: 'print resolved symbolic links or canonical file names', fn: command(readlink) },
+  readlink: { desc: 'print symlink targets or full paths', fn: command(readlink) },
   realpath: { desc: 'print the resolved path', fn: command(realpath) },
 };

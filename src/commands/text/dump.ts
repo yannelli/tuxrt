@@ -172,6 +172,6 @@ async function xxd(ctx: Ctx): Promise<number> {
 }
 
 export const dumpCommands: CommandTable = {
-  od: { fn: command(od), desc: 'dump files in octal and other formats' },
-  xxd: { fn: command(xxd), desc: 'make a hexdump or do the reverse' },
+  od: { fn: command(od), desc: 'show file bytes in octal and more' },
+  xxd: { fn: command(xxd), desc: 'hex dump a file, or undo one' },
 };

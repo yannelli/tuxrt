@@ -168,16 +168,16 @@ function dmesg(ctx: Ctx): number {
 
 export const infoCommands: CommandTable = {
   uname: { fn: command(uname), desc: 'print system information' },
-  hostname: { fn: command(hostnameCmd), desc: 'show or set the system host name' },
+  hostname: { fn: command(hostnameCmd), desc: 'print or change the hostname' },
   hostnamectl: { fn: hostnamectl, desc: 'Control the system hostname' },
-  arch: { fn: (ctx) => (ctx.stdout.write(`${machine.arch}\n`), 0), desc: 'print machine hardware name (same as uname -m)' },
-  nproc: { fn: command(nproc), desc: 'print the number of processing units available' },
+  arch: { fn: (ctx) => (ctx.stdout.write(`${machine.arch}\n`), 0), desc: 'print the CPU architecture' },
+  nproc: { fn: command(nproc), desc: 'print the available CPU count' },
   lsb_release: { fn: command(lsbRelease), desc: 'print distribution-specific information' },
   whoami: { fn: (ctx) => (ctx.stdout.write(`${ctx.shell.user.name}\n`), 0), desc: 'print effective user name' },
-  id: { fn: command(id), desc: 'print real and effective user and group IDs' },
-  groups: { fn: groups, desc: 'print the groups a user is in' },
-  tty: { fn: (ctx) => (ctx.args[0] === '-s' ? 0 : (ctx.stdout.write('/dev/pts/0\n'), 0)), desc: 'print the file name of the terminal connected to standard input' },
+  id: { fn: command(id), desc: 'print user and group identity' },
+  groups: { fn: groups, desc: "list a user's groups" },
+  tty: { fn: (ctx) => (ctx.args[0] === '-s' ? 0 : (ctx.stdout.write('/dev/pts/0\n'), 0)), desc: 'print the terminal device on stdin' },
   lscpu: { fn: lscpu, desc: 'display information about the CPU architecture' },
   lsblk: { fn: lsblk, desc: 'list block devices' },
-  dmesg: { fn: dmesg, desc: 'print or control the kernel ring buffer' },
+  dmesg: { fn: dmesg, desc: 'print kernel log messages' },
 };

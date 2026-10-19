@@ -69,5 +69,5 @@ async function find(ctx: Ctx): Promise<number> {
 }
 
 export const findCommands: CommandTable = {
-  find: { desc: 'search for files in a directory hierarchy', fn: command(find) },
+  find: { desc: 'walk directories and match files', fn: command(find) },
 };

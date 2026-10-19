@@ -1,14 +1,14 @@
 export const COWPATH = '/usr/share/cowsay/cows';
 
-const BT = '`';
-
 /** Cowfile bodies as rendered, with cowsay's $thoughts, $eyes and $tongue placeholders. */
 const COWS: Record<string, string> = {
   bunny: String.raw`  $thoughts
-   $thoughts   \
-        \ /\
-        ( )
-      .( o ).
+   $thoughts   /|  |\
+       | |  | |
+       ( $eyes  )
+        \ -- /
+       /|    |\
+      (_|____|_)
 `,
   default: String.raw`        $thoughts   ^__^
          $thoughts  ($eyes)\_______
@@ -17,28 +17,29 @@ const COWS: Record<string, string> = {
                 ||     ||
 `,
   moose: String.raw`  $thoughts
-   $thoughts   \_\_    _/_/
-    $thoughts      \__/
-           ($eyes)\_______
-           (__)\       )\/\
-               ||----w |
-               ||     ||
+   $thoughts  _||_      _||_
+    $thoughts  \  \____/  /
+          \_($eyes)_/
+           /    \________
+          ( __ )          )~
+           $tongue  ||------||
+               ||      ||
 `,
-  small: String.raw`       $thoughts   ,__,
-        $thoughts  ($eyes)____
-           (__)    )\
-            $tongue||--|| *
+  small: String.raw`      $thoughts
+       $thoughts  ^ ^
+         ($eyes)____
+          \/  __  )=
+           $tongue||  ||
 `,
   tux: String.raw`   $thoughts
     $thoughts
-        .--.
-       |o_o |
-       |:_/ |
-      //   \ \
-     (|     | )
-    /'\_   _/${BT}\
-    \___)=(___/
-
+        _.-._
+       / o o \
+       |  v  |
+      /| --- |\
+     / |     | \
+       |_____|
+       /_/ \_\
 `,
 };
 

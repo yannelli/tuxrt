@@ -88,7 +88,7 @@ function help(ctx: Ctx): number {
     ctx.stdout.write(`${ctx.args[0]}: ${def.desc}\n`);
     return 0;
   }
-  ctx.stdout.write('GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu) [tuxrt]\nThese shell commands are defined internally.\n\n');
+  ctx.stdout.write('GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu) [tuxrt]\nCommands built into this shell:\n\n');
   for (const [name, def] of builtins) ctx.stdout.write(` ${name.padEnd(10)} ${def.desc}\n`);
   ctx.stdout.write("\nRun 'compgen -c' or 'ls /usr/bin' to see all programs.\n");
   return 0;
@@ -107,8 +107,8 @@ export const jobBuiltins: CommandTable = {
   jobs: { fn: jobs, builtin: true, desc: 'Display status of jobs' },
   fg: { fn: fg, builtin: true, desc: 'Move job to the foreground' },
   bg: { fn: (ctx) => (findJob(ctx.shell, ctx.args[0]) ? 0 : bfail(ctx, 'current: no such job')), builtin: true, desc: 'Move jobs to the background' },
-  wait: { fn: wait, builtin: true, desc: 'Wait for job completion and return exit status' },
-  kill: { fn: kill, builtin: true, stub: true, desc: 'Send a signal to a job or process' },
+  wait: { fn: wait, builtin: true, desc: 'Wait for jobs and report their status' },
+  kill: { fn: kill, builtin: true, stub: true, desc: 'Signal a job or process' },
   history: { fn: history, builtin: true, desc: 'Display or manipulate the history list' },
   help: { fn: help, builtin: true, desc: 'Display information about builtin commands' },
   compgen: { fn: compgen, builtin: true, desc: 'Display possible completions' },

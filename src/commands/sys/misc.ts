@@ -120,5 +120,5 @@ export const miscCommands: CommandTable = {
   reboot: { fn: power, desc: 'Reboot the machine' },
   poweroff: { fn: power, desc: 'Power off the machine' },
   halt: { fn: power, desc: 'Halt the machine' },
-  shutdown: { fn: power, desc: 'Halt, power off or reboot the machine' },
+  shutdown: { fn: power, desc: 'Shut down or restart the machine' },
 };

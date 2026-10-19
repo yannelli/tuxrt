@@ -63,23 +63,21 @@ export const WGET_TRY = `${WGET_USAGE}\nTry \`wget --help' for more options.\n`;
 
 export const WGET_HELP = `GNU Wget 1.21.4, a non-interactive network retriever.
 ${WGET_USAGE}
-Mandatory arguments to long options are mandatory for short options too.
+Long options and their short forms take the same arguments.
 
 Startup:
-  -h,  --help                      print this help
+  -h,  --help                      show this summary and exit
 
 Logging and input file:
-  -q,  --quiet                     quiet (no output)
+  -q,  --quiet                     print nothing
 
 Download:
-  -O,  --output-document=FILE      write documents to FILE
-  -c,  --continue                  resume getting a partially-downloaded file
-  -U,  --user-agent=AGENT          identify as AGENT instead of Wget/VERSION
-       --header=STRING             insert STRING among the headers
-       --no-check-certificate      don't validate the server's certificate
+  -O,  --output-document=FILE      save the download as FILE
+  -c,  --continue                  pick up a partial download where it stopped
+  -U,  --user-agent=AGENT          send AGENT as the User-Agent header
+       --header=STRING             add STRING as an extra request header
+       --no-check-certificate      skip TLS certificate verification
 
 Directories:
-  -P,  --directory-prefix=PREFIX   save files to PREFIX/..
-
-Mail bug reports and suggestions to <bug-wget@gnu.org>
+  -P,  --directory-prefix=PREFIX   store downloads under PREFIX/
 `;

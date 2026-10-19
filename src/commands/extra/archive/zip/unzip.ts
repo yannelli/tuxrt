@@ -9,19 +9,16 @@ import { readZip, unpack, ZipError, type ZipEntry } from './format.ts';
 const USAGE = `UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP.
 
 Usage: unzip [-Z] [-opts[modifiers]] file[.zip] [list] [-x xlist] [-d exdir]
-  Default action is to extract files in list, except those in xlist, to exdir;
-  file[.zip] may be a wildcard.  -Z => ZipInfo mode ("unzip -Z" for usage).
+  Extracts the members named in list (all by default), minus xlist, into exdir.
 
-  -p  extract files to pipe, no messages     -l  list files (short format)
-  -d  extract files into exdir               -j  junk paths (do not make directories)
-  -o  overwrite files WITHOUT prompting      -n  never overwrite existing files
-  -q  quiet mode (-qq => quieter)
+  -p  write members to stdout, silently      -l  print a table of members
+  -d  extract under exdir                    -j  drop stored paths, flatten output
+  -o  replace existing files, no questions   -n  keep existing files untouched
+  -q  less output (-qq for even less)
 `;
 
-const NO_EOCD = `  End-of-central-directory signature not found.  Either this file is not
-  a zipfile, or it constitutes one disk of a multi-part archive.  In the
-  latter case the central directory and zipfile comment will be found on
-  the last disk(s) of this archive.
+const NO_EOCD = `  End-of-central-directory signature not found: this is not a zip archive,
+  or it is one piece of a split archive whose index lives in the last piece.
 `;
 
 function open(ctx: Ctx, arg: string): { name: string; bytes: Uint8Array } | null {

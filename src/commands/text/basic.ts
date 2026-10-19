@@ -88,7 +88,7 @@ async function yes(ctx: Ctx): Promise<number> {
 }
 
 export const basicCommands: CommandTable = {
-  cat: { fn: command(cat), desc: 'concatenate files and print on the standard output' },
+  cat: { fn: command(cat), desc: 'join files and print them' },
   tac: {
     desc: 'concatenate and print files in reverse',
     fn: command((ctx) => readInputs(ctx, parseArgs(ctx.args, {}).operands, (text) => ctx.stdout.write(splitKeep(text).reverse().join('')))),
@@ -99,6 +99,6 @@ export const basicCommands: CommandTable = {
       ctx.stdout.write([...chomp(l)].reverse().join('') + (l.endsWith('\n') ? '\n' : ''));
     })),
   },
-  tee: { fn: command(tee), desc: 'read from standard input and write to standard output and files' },
+  tee: { fn: command(tee), desc: 'copy stdin to stdout and files' },
   yes: { fn: yes, desc: 'output a string repeatedly until killed' },
 };

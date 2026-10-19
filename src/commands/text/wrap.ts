@@ -169,7 +169,7 @@ async function fmt(ctx: Ctx): Promise<number> {
 }
 
 export const wrapCommands: CommandTable = {
-  fold: { fn: command(fold), desc: 'wrap each input line to fit in specified width' },
+  fold: { fn: command(fold), desc: 'wrap lines to a given width' },
   expand: { fn: command(expand), desc: 'convert tabs to spaces' },
   unexpand: { fn: command(unexpand), desc: 'convert spaces to tabs' },
   fmt: { fn: command(fmt), desc: 'simple optimal text formatter' },

@@ -2,26 +2,24 @@ import { machine, memoryUsage, uptimeSeconds } from '../../../vfs/machine.ts';
 import type { CommandFn } from '../../types.ts';
 import { loadDb } from '../apt/db.ts';
 
-const LOGO = `            .-/+oossssoo+/-.
-        \`:+ssssssssssssssssss+:\`
-      -+ssssssssssssssssssyyssss+-
-    .ossssssssssssssssssdMMMNysssso.
-   /ssssssssssshdmmNNmmyNMMMMhssssss/
-  +ssssssssshmydMMMMMMMNddddyssssssss+
- /sssssssshNMMMyhhyyyyhmNMMMNhssssssss/
-.ssssssssdMMMNhsssssssssshNMMMdssssssss.
-+sssshhhyNMMNyssssssssssssyNMMMysssssss+
-ossyNMMMNyMMhsssssssssssssshmmmhssssssso
-ossyNMMMNyMMhsssssssssssssshmmmhssssssso
-+sssshhhyNMMNyssssssssssssyNMMMysssssss+
-.ssssssssdMMMNhsssssssssshNMMMdssssssss.
- /sssssssshNMMMyhhyyyyhdNMMMNhssssssss/
-  +sssssssssdmydMMMMMMMMddddyssssssss+
-   /ssssssssssshdmNNNNmyNMMMMhssssss/
-    .ossssssssssssssssssdMMMNysssso.
-      -+sssssssssssssssssyyyssss+-
-        \`:+ssssssssssssssssss+:\`
-            .-/+oossssoo+/-.`.split('\n');
+const LOGO = `                  @@@@
+                 @@@@@@
+                 @@@@@@
+           oooo          oooo
+         ooooooo        ooooooo
+       oooooo              oooooo
+      ooooo                  ooooo
+     ooooo                    ooooo
+     oooo                      oooo
+    oooo                        oooo
+    oooo                        oooo
+
+
+   @@@@@@                      @@@@@@
+   @@@@@@   o              o   @@@@@@
+    @@@    ooooo        ooooo    @@@
+           oooooooooooooooooo
+                oooooooo`.split('\n');
 
 const LOGO_WIDTH = 40;
 

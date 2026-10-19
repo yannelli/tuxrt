@@ -10,5 +10,5 @@ export const archiveCommands: CommandTable = {
   zcat: { fn: gzipCommand('zcat'), desc: 'compress or expand files' },
   tar: { fn: tarCommand, desc: 'an archiving utility' },
   zip: { fn: zipCommand, desc: 'package and compress (archive) files' },
-  unzip: { fn: unzipCommand, desc: 'list, test and extract compressed files in a ZIP archive' },
+  unzip: { fn: unzipCommand, desc: 'extract or list ZIP archives' },
 };

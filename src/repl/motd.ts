@@ -21,7 +21,7 @@ export function motd(user: User): string {
     '',
   ];
   if (user.groups.includes(27)) {
-    lines.push(`To run a command as administrator (user "root"), use "sudo <command>".`, `See "man sudo_root" for details.`, '');
+    lines.push(`Prefix a command with "sudo" to run it with root privileges.`, `"man sudo_root" explains how administrator access works here.`, '');
   }
   return `${lines.join('\n')}\n`;
 }

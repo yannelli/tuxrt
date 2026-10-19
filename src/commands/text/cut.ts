@@ -137,6 +137,6 @@ async function paste(ctx: Ctx): Promise<number> {
 }
 
 export const cutCommands: CommandTable = {
-  cut: { fn: command(cut), desc: 'remove sections from each line of files' },
+  cut: { fn: command(cut), desc: 'pick fields or columns from lines' },
   paste: { fn: command(paste), desc: 'merge lines of files' },
 };

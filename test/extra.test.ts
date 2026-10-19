@@ -105,7 +105,7 @@ test('cowsay and cowthink are preinstalled', async () => {
   assert.equal(await out('printf "hello world\\nsecond line\\n" | cowsay'), ` _____________\n/ hello world \\\n\\ second line /\n -------------\n${COW}`);
   assert.equal((await out('cowsay -W 10 the quick brown fox jumps')).split('\n').slice(0, 5).join('\n'), ' ___________\n/ the quick \\\n| brown fox |\n\\ jumps     /\n -----------');
   assert.match(await out('cowsay -e ^^ -T U! hi'), /\(\^\^\)\\_______\n[^]*\n {13}U! \|\|----w \|\n/);
-  assert.match(await out('cowsay -f tux hi'), /\.--\.\n {7}\|o_o \|/);
+  assert.match(await out('cowsay -f tux hi'), /_\.-\._\n {7}\/ o o \\\n/);
   assert.deepEqual(await sh('cowsay -f nope hi'), { stdout: '', stderr: 'cowsay: Could not find nope cowfile!\n', code: 1 });
   assert.equal((await out('printf "a\\nbb\\n" | cowthink')).split('\n').slice(0, 5).join('\n'), ' ____\n( a  )\n( bb )\n ----\n        o   ^__^');
 });

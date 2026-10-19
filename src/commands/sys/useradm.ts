@@ -219,9 +219,9 @@ function chsh(ctx: Ctx): number {
 }
 
 export const userAdminCommands: CommandTable = {
-  useradd: { fn: command(useradd), desc: 'create a new user or update default new user information' },
-  adduser: { fn: command(adduser), desc: 'add a user or group to the system' },
-  userdel: { fn: command(userdel), desc: 'delete a user account and related files' },
+  useradd: { fn: command(useradd), desc: 'create a user account (low level)' },
+  adduser: { fn: command(adduser), desc: 'create a user or group, with defaults' },
+  userdel: { fn: command(userdel), desc: 'remove a user account' },
   usermod: { fn: command(usermod), desc: 'modify a user account' },
   groupadd: { fn: command(groupadd), desc: 'create a new group' },
   groupdel: { fn: command(groupdel), desc: 'delete a group' },

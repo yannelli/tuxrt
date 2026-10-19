@@ -111,6 +111,6 @@ async function getent(ctx: Ctx): Promise<number> {
 }
 
 export const netCommands: CommandTable = {
-  ip: { fn: ip, desc: 'show / manipulate routing, network devices, interfaces and tunnels' },
-  getent: { fn: getent, desc: 'get entries from Name Service Switch libraries' },
+  ip: { fn: ip, desc: 'show or change network links and routes' },
+  getent: { fn: getent, desc: 'look up entries in NSS databases' },
 };

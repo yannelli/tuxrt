@@ -155,6 +155,6 @@ async function join(ctx: Ctx): Promise<number> {
 
 export const uniqCommands: CommandTable = {
   uniq: { fn: command(uniq), desc: 'report or omit repeated lines' },
-  comm: { fn: command(comm), desc: 'compare two sorted files line by line' },
-  join: { fn: command(join), desc: 'join lines of two files on a common field' },
+  comm: { fn: command(comm), desc: 'show lines shared by sorted files' },
+  join: { fn: command(join), desc: 'merge two files on a key field' },
 };

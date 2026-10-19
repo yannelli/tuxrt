@@ -9,7 +9,7 @@ import { StringReader } from '../src/shell/io.ts';
 import { machine, sh } from './helpers.ts';
 
 const LS_HEADER = 'LS(1)                            User Commands                           LS(1)';
-const LS_FOOTER = 'GNU coreutils 9.4                 April 2024                             LS(1)';
+const LS_FOOTER = 'tuxrt 0.1.0                         2026-10                              LS(1)';
 
 async function tty(cmd: string): Promise<string> {
   const rt = await Runtime.boot();
@@ -27,8 +27,8 @@ test('man: renders like man-db at 80 columns', async () => {
   assert.equal(lines.at(-2), LS_FOOTER);
   assert.equal(lines.at(-1), '');
   assert.match(r.stdout, /\n\nNAME\n {7}ls - list directory contents\n\nSYNOPSIS\n {7}ls \[OPTION\]\.\.\. \[FILE\]\.\.\.\n/);
-  assert.match(r.stdout, /\n {7}-a, --all\n {14}do not ignore entries starting with \.\n/);
-  assert.match(r.stdout, /\n {7}-l {5}use a long listing format\n/);
+  assert.match(r.stdout, /\n {7}-a, --all\n {14}include entries whose names begin with a dot\n/);
+  assert.match(r.stdout, /\n {7}-l {5}produce the detailed long format\n/);
   assert.ok(lines.every((l) => l.length <= 78), 'fits in 78 columns');
   assert.ok(!r.stdout.includes('\x1b'), 'no escape codes off a terminal');
 });

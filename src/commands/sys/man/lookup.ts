@@ -23,7 +23,6 @@ const ADMIN = new Set([
   'useradd', 'userdel', 'usermod', 'groupadd', 'groupdel', 'adduser', 'chpasswd', 'reboot', 'shutdown', 'poweroff', 'halt',
   'service', 'ip', 'lsblk', 'apt-get', 'apt-cache', 'mandb',
 ]);
-const GENERATED: [string, string] = ['tuxrt', 'April 2024'];
 
 let database: Map<string, Page[]> | undefined;
 function db(): Map<string, Page[]> {
@@ -53,7 +52,6 @@ function generated(ctx: Ctx, name: string): Page | undefined {
     synopsis: [doc?.synopsis ?? `${name} [OPTION]... [ARGUMENT]...`],
     description: doc ? [...doc.text.split('\n\n'), note] : [sentence(def.desc), builtin ? note : `Run '${name} --help' for a summary of options.`],
     seeAlso: builtin ? ['bash(1)', 'bash-builtins(7)'] : [],
-    footer: builtin ? ['GNU Bash 5.2', '2022 September 19'] : GENERATED,
     manual: builtin ? 'General Commands Manual' : undefined,
   };
 }

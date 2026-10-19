@@ -19,13 +19,13 @@ export interface Page {
   examples?: [string, string][];
   /** "name(section)" references. */
   seeAlso?: string[];
-  /** Footer left and center: [source, date]. */
-  footer: [string, string];
+  /** Footer left and center: [source, date]; defaults to FOOTER. */
+  footer?: [string, string];
   /** Header center; defaults by section ("User Commands" for 1). */
   manual?: string;
 }
 
-export const COREUTILS: [string, string] = ['GNU coreutils 9.4', 'April 2024'];
+export const FOOTER: [string, string] = ['tuxrt 0.1.0', '2026-10'];
 
 /** A bash builtin: one synopsis line, a whatis summary, and description text ("\n\n" separates paragraphs). */
 export interface Builtin {
@@ -35,9 +35,6 @@ export interface Builtin {
 }
 
 export const GNU_HELP: [string, string][] = [
-  ['--help', 'display this help and exit'],
-  ['--version', 'output version information and exit'],
+  ['--help', 'print a short usage summary, then exit'],
+  ['--version', 'print the program version, then exit'],
 ];
-
-export const coreutilsDocs = (name: string): string =>
-  `Full documentation <https://www.gnu.org/software/coreutils/${name}>\nor available locally via: info '(coreutils) ${name} invocation'`;

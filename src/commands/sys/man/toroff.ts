@@ -1,4 +1,4 @@
-import type { Item, Page } from './types.ts';
+import { FOOTER, type Item, type Page } from './types.ts';
 
 const DEFAULT_MANUAL: Record<string, string> = {
   '1': 'User Commands', '5': 'File Formats Manual', '6': 'Games Manual', '7': 'Miscellaneous Information Manual', '8': 'System Administration',
@@ -44,7 +44,7 @@ function section(title: string, items: Item[], tagged: (tag: string) => string):
 
 /** Converts a structured page into the roff source man would read from /usr/share/man. */
 export function toRoff(page: Page): string {
-  const { name, section: sec, footer } = page;
+  const { name, section: sec, footer = FOOTER } = page;
   const synopsis = page.synopsis.map((s) => styleTag(s, true));
   const asSynopsis = (t: string) => styleTag(t, true);
   const refs = (page.seeAlso ?? []).filter((r) => REF.test(r));

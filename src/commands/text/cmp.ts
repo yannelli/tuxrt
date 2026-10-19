@@ -90,5 +90,5 @@ async function strings(ctx: Ctx): Promise<number> {
 
 export const cmpCommands: CommandTable = {
   cmp: { fn: command(cmp), desc: 'compare two files byte by byte' },
-  strings: { fn: command(strings), desc: 'print the sequences of printable characters in files' },
+  strings: { fn: command(strings), desc: 'extract printable text from files' },
 };

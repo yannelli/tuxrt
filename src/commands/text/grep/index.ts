@@ -104,6 +104,6 @@ async function grep(ctx: Ctx): Promise<number> {
 
 export const grepCommands: CommandTable = {
   grep: { fn: command(grep), desc: 'print lines that match patterns' },
-  egrep: { fn: command(grep), desc: 'print lines that match patterns (grep -E)' },
-  fgrep: { fn: command(grep), desc: 'print lines that match patterns (grep -F)' },
+  egrep: { fn: command(grep), desc: 'grep with extended regexes (grep -E)' },
+  fgrep: { fn: command(grep), desc: 'grep for fixed strings (grep -F)' },
 };

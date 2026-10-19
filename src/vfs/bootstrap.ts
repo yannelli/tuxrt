@@ -47,7 +47,7 @@ const etc: Record<string, string> = {
     '',
   ].join('\n'),
   shadow: 'root:*:19962:0:99999:7:::\nubuntu:!:19962:0:99999:7:::\n',
-  shells: '# /etc/shells: valid login shells\n/bin/sh\n/bin/bash\n/usr/bin/bash\n',
+  shells: '# Shells that users may pick as their login shell (see chsh).\n/bin/sh\n/bin/bash\n/usr/bin/bash\n',
   timezone: 'Etc/UTC\n',
   'resolv.conf': 'nameserver 127.0.0.53\noptions edns0 trust-ad\nsearch .\n',
   fstab: 'LABEL=cloudimg-rootfs\t/\text4\tdiscard,errors=remount-ro\t0 1\n',
@@ -56,7 +56,7 @@ const etc: Record<string, string> = {
   profile: 'if [ -d /etc/profile.d ]; then\n  for i in /etc/profile.d/*.sh; do\n    [ -r "$i" ] && . "$i"\n  done\nfi\n',
 };
 
-const bashrc = `# ~/.bashrc: executed by bash(1) for non-login shells.
+const bashrc = `# ~/.bashrc: per-user settings that bash reads when an interactive shell starts.
 HISTSIZE=1000
 PS1='\\[\\e[01;32m\\]\\u@\\h\\[\\e[00m\\]:\\[\\e[01;34m\\]\\w\\[\\e[00m\\]\\$ '
 alias ls='ls --color=auto'
@@ -66,7 +66,7 @@ alias la='ls -A'
 alias l='ls -CF'
 `;
 
-const profile = `# ~/.profile: executed by the command interpreter for login shells.
+const profile = `# ~/.profile: runs once when you log in; add environment setup here.
 if [ -d "$HOME/bin" ]; then
     PATH="$HOME/bin:$PATH"
 fi
@@ -99,7 +99,7 @@ export function bootstrap(commands: Iterable<string>, tty: (d: string) => void =
   for (const [name, content] of Object.entries(etc)) vfs.writeFile(`/etc/${name}`, content);
   vfs.chmod('/etc/shadow', 0o640);
   vfs.chown('/etc/shadow', 0, 42);
-  vfs.writeFile('/etc/bash.bashrc', '# System-wide .bashrc file for interactive bash(1) shells.\n');
+  vfs.writeFile('/etc/bash.bashrc', '# Settings shared by every interactive bash shell on this machine.\n');
   vfs.writeFile('/etc/skel/.bashrc', bashrc);
   vfs.writeFile('/etc/skel/.profile', profile);
   vfs.writeFile('/etc/sudoers', 'root\tALL=(ALL:ALL) ALL\n%sudo\tALL=(ALL:ALL) ALL\n');
@@ -135,7 +135,7 @@ export function createHome(vfs: VFS, user: { uid: number; gid: number; home: str
     vfs.writeFile(`${user.home}/${file}`, vfs.readFile(`/etc/skel/${file}`));
     vfs.chown(`${user.home}/${file}`, user.uid, user.gid);
   }
-  vfs.writeFile(`${user.home}/.bash_logout`, '# ~/.bash_logout: executed by bash(1) when login shell exits.\n');
+  vfs.writeFile(`${user.home}/.bash_logout`, '# ~/.bash_logout: runs when a login shell exits.\n');
   vfs.chown(`${user.home}/.bash_logout`, user.uid, user.gid);
   vfs.chown(user.home, user.uid, user.gid);
 }
