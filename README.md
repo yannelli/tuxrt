@@ -14,7 +14,7 @@ ubuntu@ubuntu:~/proj$ sudo apt install cowsay && cowsay moo | head -3
 
 ## Usage
 
-It runs the same on Linux, macOS and Windows. Development runs the `.ts` sources directly, which needs Node 22.18+ or 23.6+. The published package is compiled JavaScript (`npm run build` writes `dist/`), and that build runs on Node 20 and later.
+It runs the same on Linux, macOS and Windows on Node 24 or later. Development runs the `.ts` sources directly; the published package is compiled JavaScript (`npm run build` writes `dist/`).
 
 ```sh
 npm start                          # interactive login shell (tab completion, history, Ctrl-C, Ctrl-D)

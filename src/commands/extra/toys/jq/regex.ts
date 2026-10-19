@@ -62,7 +62,7 @@ function matches(s: string, re: Value, flags: Value, forceGlobal = false): Match
   const out: Match[] = [];
   rx.lastIndex = 0;
   for (let m = rx.exec(s); m; m = rx.exec(s)) {
-    const [start, end] = m.indices![0];
+    const [start, end] = m.indices![0]!;
     if (m[0] === '') rx.lastIndex = start + (rx.unicode && (s.codePointAt(start) ?? 0) > 0xffff ? 2 : 1);
     if (m[0] === '' && skipEmpty) {
       if (start >= s.length) break;

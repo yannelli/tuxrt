@@ -22,7 +22,7 @@ function sandboxCrypto(rt: NodeRuntime) {
     if (name !== 'constructor') subtle[name] = (...args) => rt.loop.track(host[name](...args) as Promise<unknown>, rt.realm.Promise);
   }
   return {
-    getRandomValues: <T extends ArrayBufferView>(array: T) => webcrypto.getRandomValues(array as unknown as Uint8Array) as unknown as T,
+    getRandomValues: <T extends ArrayBufferView>(array: T) => webcrypto.getRandomValues(array as unknown as Uint8Array<ArrayBuffer>) as unknown as T,
     randomUUID: () => webcrypto.randomUUID(),
     subtle,
   };

@@ -21,7 +21,7 @@
     "./bundle": "./dist/tuxrt.js"
   },
   "engines": {
-    "node": ">=20.11"
+    "node": ">=24"
   },
   "scripts": {
     "start": "node src/cli.ts",
@@ -33,9 +33,9 @@
     "test:portable": "node --test \"test/*.test.ts\""
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "esbuild": "^0.25.12",
-    "typescript": "^5.9.0"
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
   },
   "files": [
     "dist",

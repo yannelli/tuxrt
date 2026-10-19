@@ -1,6 +1,6 @@
 # Writing commands for tuxrt
 
-tuxrt is a TypeScript runtime that emulates an Ubuntu 24.04 CLI entirely in memory. Node >= 23.6 runs the `.ts` sources directly (type stripping), so there is no build step.
+tuxrt is a TypeScript runtime that emulates an Ubuntu 24.04 CLI entirely in memory. Node >= 24 runs the `.ts` sources directly (type stripping), so there is no build step.
 
 ## Constraints
 
