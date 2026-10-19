@@ -8,7 +8,7 @@ import { SIGNALS } from '../../../shell/process.ts';
 import { spawnShell } from '../../../shell/script.ts';
 import { dispatch } from '../../../shell/simple.ts';
 import { normalize } from '../../../vfs/path.ts';
-import { fromBytes, toBytes } from '../bytes.ts';
+import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import type { NodeRuntime } from './runtime.ts';
 
 interface Opts {

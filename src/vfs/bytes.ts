@@ -4,7 +4,7 @@ import { isUtf8 } from 'node:buffer';
 // apart by control bytes (NUL, C1...) next to high bytes, which real formats always have and text never does.
 const CONTROL = /[\x00-\x08\x0e-\x1a\x1c-\x1f\x7f-\x9f]/;
 
-function isBinary(s: string): boolean {
+export function isBinary(s: string): boolean {
   return !/[^\x00-\xff]/.test(s) && /[\x80-\xff]/.test(s) && CONTROL.test(s);
 }
 
@@ -19,4 +19,8 @@ export function fromBytes(bytes: Uint8Array): string {
     if (!isBinary(text)) return text;
   }
   return buf.toString('latin1');
+}
+
+export function byteLength(s: string): number {
+  return isBinary(s) ? s.length : Buffer.byteLength(s);
 }

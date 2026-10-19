@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { SIGNALS } from '../../../shell/process.ts';
 import type { Writer } from '../../../shell/io.ts';
 import { normalize } from '../../../vfs/path.ts';
-import { fromBytes, toBytes } from '../bytes.ts';
+import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import { NODE_VERSION, sysError } from './errors.ts';
 import type { NodeRuntime } from './runtime.ts';
 

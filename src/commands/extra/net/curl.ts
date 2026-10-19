@@ -1,7 +1,7 @@
 import { readAll } from '../../../shell/io.ts';
 import { FsError } from '../../../vfs/errors.ts';
 import type { Ctx } from '../../types.ts';
-import { fromBytes, toBytes } from '../bytes.ts';
+import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import {
   abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, parseUrl, requestSignal, scanArgs, withScheme, type Opt,
 } from './argv.ts';

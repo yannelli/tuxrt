@@ -4,7 +4,7 @@ import { basename } from '../../../vfs/path.ts';
 import type { Stat } from '../../../vfs/types.ts';
 import type { Ctx } from '../../types.ts';
 import { command, parseArgs } from '../../util.ts';
-import { fromBytes, toBytes } from '../bytes.ts';
+import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import { GzipError, gunzip, gzip, gzipOverhead, isGzip } from './gzfmt.ts';
 
 interface GzOpts {

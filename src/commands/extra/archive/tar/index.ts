@@ -1,7 +1,7 @@
 import { readAll } from '../../../../shell/io.ts';
 import { errMessage } from '../../../../vfs/errors.ts';
 import type { Ctx } from '../../../types.ts';
-import { fromBytes, toBytes } from '../../bytes.ts';
+import { fromBytes, toBytes } from '../../../../vfs/bytes.ts';
 import { GzipError, gunzip, gzip, isGzip } from '../gzfmt.ts';
 import { parseTarArgs, TarUsage, type TarArgs } from './args.ts';
 import { createEntries } from './create.ts';

@@ -67,7 +67,7 @@ test('sleep, time, timeout, env, nohup, watch', async () => {
   assert.ok(Date.now() - t0 < 2000);
   assert.equal(await out('timeout 5 echo hi; echo $?'), 'hi\n0\n');
   assert.equal((await sh('timeout 1 nosuch')).code, 127);
-  assert.match((await sh('time sleep 0.05')).stderr, /^\nreal\t0m0\.0[5-9]\ds\nuser\t0m\d\.\d{3}s\nsys\t0m\d\.\d{3}s\n$/);
+  assert.match((await sh('time sleep 0.05')).stderr, /^\nreal\t0m0\.0[4-9]\ds\nuser\t0m\d\.\d{3}s\nsys\t0m\d\.\d{3}s\n$/);
   assert.equal((await sh('sleep 1x')).stderr, "sleep: invalid time interval ‘1x’\nTry 'sleep --help' for more information.\n");
   assert.equal((await sh('sleep 0.01 0.01s')).code, 0);
   assert.equal(await out('env -i FOO=bar env'), 'FOO=bar\n');

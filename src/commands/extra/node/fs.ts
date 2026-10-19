@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
 import { FsError } from '../../../vfs/errors.ts';
 import { dirname, normalize } from '../../../vfs/path.ts';
-import { fromBytes, toBytes } from '../bytes.ts';
+import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import { fsConstants as constants } from './constants.ts';
 import { sysError, toNodeError, typeError } from './errors.ts';
 import { Dirent, Stats } from './fs-types.ts';

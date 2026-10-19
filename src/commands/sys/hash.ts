@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { fromBytes, toBytes } from '../extra/bytes.ts';
+import { fromBytes, toBytes } from '../../vfs/bytes.ts';
 import type { CommandDef, CommandTable, Ctx } from '../types.ts';
 import { command, fail, lines, parseArgs, readInput, readInputs } from '../util.ts';
 

@@ -1,3 +1,4 @@
+import { byteLength } from './bytes.ts';
 import { FsError } from './errors.ts';
 import { basename, dirname, normalize, split } from './path.ts';
 import type { Cred, DirNode, FileNode, LinkNode, Stat, VNode } from './types.ts';
@@ -142,7 +143,7 @@ export class VFS {
   stat(path: string, follow = true): Stat {
     const n = this.lookup(path, follow);
     const size =
-      n.kind === 'dir' ? 4096 : n.kind === 'symlink' ? n.target.length : n.generate ? 0 : Buffer.byteLength(n.content);
+      n.kind === 'dir' ? 4096 : n.kind === 'symlink' ? n.target.length : n.generate ? 0 : byteLength(n.content);
     const nlink = n.kind === 'dir' ? 2 + [...n.children.values()].filter((c) => c.kind === 'dir').length : n.nlink;
     return { kind: n.kind, ino: n.ino, mode: n.mode, uid: n.uid, gid: n.gid, size, nlink, mtime: n.mtime, ctime: n.ctime };
   }

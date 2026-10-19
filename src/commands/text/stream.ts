@@ -71,14 +71,7 @@ export async function pause(ctx: Ctx): Promise<void> {
   if (ctx.signal.aborted) throw new Interrupt(128 + (Number(ctx.signal.reason) || 2));
 }
 
-/** VFS strings are decoded UTF-8, or raw bytes as latin1 (/dev/urandom); stray controls mark the latter. */
-export function isRaw(s: string): boolean {
-  return /[\x00-\x08\x0e-\x1f\x7f-\x9f]/.test(s) && !/[^\x00-\xff]/.test(s);
-}
-
-export function toBytes(s: string): Buffer {
-  return Buffer.from(s, isRaw(s) ? 'latin1' : 'utf8');
-}
+export { isBinary as isRaw, toBytes } from '../../vfs/bytes.ts';
 
 export function fromBytes(b: Buffer, raw: boolean): string {
   return b.toString(raw ? 'latin1' : 'utf8');

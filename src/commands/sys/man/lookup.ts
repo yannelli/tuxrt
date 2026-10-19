@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { toBytes } from '../../extra/bytes.ts';
+import { toBytes } from '../../../vfs/bytes.ts';
 import type { Ctx } from '../../types.ts';
 import { builtinDocs } from './pages/builtins.ts';
 import { allPages } from './pages/index.ts';

@@ -4,7 +4,7 @@ import { formatMode } from '../../../../vfs/mode.ts';
 import { dirname, normalize } from '../../../../vfs/path.ts';
 import { findGroup, findUser } from '../../../../vfs/users.ts';
 import type { Ctx } from '../../../types.ts';
-import { fromBytes } from '../../bytes.ts';
+import { fromBytes } from '../../../../vfs/bytes.ts';
 import type { TarArgs } from './args.ts';
 import { excluder, longLister, safeName, selects } from './names.ts';
 import type { TarStatus } from './status.ts';

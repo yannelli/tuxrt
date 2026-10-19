@@ -1,5 +1,5 @@
 import { deflateRawSync, inflateRawSync } from 'node:zlib';
-import { fromBytes } from '../../bytes.ts';
+import { fromBytes } from '../../../../vfs/bytes.ts';
 import { crc32 } from '../gzfmt.ts';
 
 export interface ZipEntry {

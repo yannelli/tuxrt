@@ -3,7 +3,7 @@ import { lineReader } from '../../../../shell/io.ts';
 import { errMessage } from '../../../../vfs/errors.ts';
 import { basename, dirname, normalize } from '../../../../vfs/path.ts';
 import type { Ctx } from '../../../types.ts';
-import { fromBytes } from '../../bytes.ts';
+import { fromBytes } from '../../../../vfs/bytes.ts';
 import { crc32 } from '../gzfmt.ts';
 import { safeName } from '../tar/names.ts';
 import { S_IFLNK, S_IFMT, unixMode, unpack, type ZipEntry } from './format.ts';

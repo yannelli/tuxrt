@@ -5,7 +5,7 @@ import { normalize } from '../../../../vfs/path.ts';
 import type { Stat } from '../../../../vfs/types.ts';
 import { groupName, userName } from '../../../../vfs/users.ts';
 import type { Ctx } from '../../../types.ts';
-import { toBytes } from '../../bytes.ts';
+import { toBytes } from '../../../../vfs/bytes.ts';
 import type { TarArgs } from './args.ts';
 import { excluder, longLister, safeName } from './names.ts';
 import type { TarStatus } from './status.ts';

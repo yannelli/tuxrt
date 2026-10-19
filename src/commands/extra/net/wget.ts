@@ -2,7 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { FsError } from '../../../vfs/errors.ts';
 import type { Ctx } from '../../types.ts';
-import { fromBytes } from '../bytes.ts';
+import { fromBytes } from '../../../vfs/bytes.ts';
 import {
   abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, parseUrl, requestSignal, scanArgs, untilAbort, withScheme,
 } from './argv.ts';
