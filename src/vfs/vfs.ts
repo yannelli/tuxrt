@@ -30,7 +30,7 @@ export class VFS {
     return { ...this.base(mode), kind: 'file', content };
   }
 
-  private newLink(target: string): LinkNode {
+  newLink(target: string): LinkNode {
     return { ...this.base(0o777), kind: 'symlink', target };
   }
 
@@ -38,7 +38,7 @@ export class VFS {
     const { uid, gid, groups } = this.cred;
     if (uid === 0) return want !== X || node.kind === 'dir' || (node.mode & 0o111) !== 0;
     const shift = node.uid === uid ? 6 : node.gid === gid || groups.includes(node.gid) ? 3 : 0;
-    return ((node.mode >> shift) & want) !== 0;
+    return ((node.mode >> shift) & want) === want;
   }
 
   private check(node: VNode, want: number, path: string): void {

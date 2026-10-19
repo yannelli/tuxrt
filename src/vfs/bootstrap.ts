@@ -106,16 +106,25 @@ export function bootstrap(commands: Iterable<string>, tty: (d: string) => void =
   vfs.writeFile('/root/.bashrc', bashrc);
   vfs.writeFile('/root/.profile', profile);
 
-  for (const name of commands) {
-    vfs.writeFile(`/usr/bin/${name}`, `${ELF_MAGIC}${name}\n`);
-    vfs.chmod(`/usr/bin/${name}`, 0o755);
-  }
-  if (vfs.exists('/usr/bin/sudo')) vfs.chmod('/usr/bin/sudo', 0o4755);
-
-  mountProc(vfs, () => vfs.readFile('/etc/hostname').trim());
-  mountDev(vfs, tty);
+  installStubs(vfs, commands);
+  mountVirtual(vfs, tty);
   createHome(vfs, DEFAULT_USER);
   return vfs;
+}
+
+/** Writes an ELF stub into /usr/bin for every command that lacks one. Expects root credentials. */
+export function installStubs(vfs: VFS, commands: Iterable<string>): void {
+  for (const name of commands) {
+    const path = `/usr/bin/${name}`;
+    if (vfs.exists(path)) continue;
+    vfs.writeFile(path, `${ELF_MAGIC}${name}\n`);
+    vfs.chmod(path, name === 'sudo' ? 0o4755 : 0o755);
+  }
+}
+
+export function mountVirtual(vfs: VFS, tty: (d: string) => void): void {
+  mountProc(vfs, () => vfs.readFile('/etc/hostname').trim());
+  mountDev(vfs, tty);
 }
 
 export function createHome(vfs: VFS, user: { uid: number; gid: number; home: string }): void {
