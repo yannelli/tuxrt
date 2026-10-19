@@ -69,6 +69,10 @@ async function read(ctx: Ctx, a: TarArgs, status: TarStatus, file: string): Prom
 }
 
 export async function tarCommand(ctx: Ctx): Promise<number> {
+  if (ctx.args[0] === '--version') {
+    ctx.stdout.write('tar (GNU tar) 1.35\nCopyright (C) 2023 Free Software Foundation, Inc.\n');
+    return 0;
+  }
   let a: TarArgs;
   try {
     a = parseTarArgs(ctx.args, ctx.shell.cwd);
