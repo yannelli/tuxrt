@@ -6,7 +6,7 @@ import type { CommandTable, Ctx } from '../types.ts';
 import { command, fail } from '../util.ts';
 import { isProgram, leadingOpts, streams } from './exec.ts';
 import { hostname } from './info.ts';
-import { asUser, login } from './login.ts';
+import { asUser, login, loginOrRunStdin } from './login.ts';
 
 const SUDO_GID = 27;
 const USAGE = 'usage: sudo -h | -K | -k | -V\nusage: sudo -v [-ABkNnS] [-g group] [-h host] [-p prompt] [-u user]\nusage: sudo -l [-ABkNnS] [-g group] [-h host] [-p prompt] [-U user] [-u user] [command [arg ...]]\nusage: sudo [-ABbEHkNnPS] [-C num] [-D directory] [-g group] [-h host] [-p prompt] [-R directory] [-T timeout] [-u user] [VAR=value] [-i | -s] [command [arg ...]]\n';
@@ -54,6 +54,7 @@ async function sudo(ctx: Ctx): Promise<number> {
   const target = lookupTarget(ctx, opts.u);
   if (!target) return fail(ctx, `unknown user ${opts.u}`);
   if (!rest.length) {
+    if (!ctx.shell.interactive && !ctx.stdin.isTTY) return loginOrRunStdin(ctx, target, opts.i ? target.home : undefined);
     login(ctx.shell, target, opts.i ? target.home : undefined);
     ctx.shell.export('SUDO_USER', caller.name);
     return 0;
@@ -100,8 +101,7 @@ async function su(ctx: Ctx): Promise<number> {
       ctx.vfs.cred = { uid: user.uid, gid: user.gid, groups: user.groups };
     }
   }
-  login(ctx.shell, target, isLogin ? target.home : undefined);
-  return 0;
+  return loginOrRunStdin(ctx, target, isLogin ? target.home : undefined);
 }
 
 export const sudoCommands: CommandTable = {

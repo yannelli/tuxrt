@@ -1,6 +1,9 @@
+import { runSource } from '../../shell/interpreter.ts';
+import { readAll } from '../../shell/io.ts';
 import type { Shell } from '../../shell/shell.ts';
 import type { User } from '../../vfs/users.ts';
-import { programShell } from './exec.ts';
+import type { Ctx } from '../types.ts';
+import { programShell, streams } from './exec.ts';
 
 const origins = new WeakMap<Shell, Shell>();
 
@@ -18,6 +21,22 @@ export function login(shell: Shell, user: User, cwd?: string): void {
   target.logins.push({ user: target.user, cwd: target.cwd, vars: new Map(target.vars) });
   target.applyUser(user);
   if (cwd) target.cwd = cwd;
+}
+
+/** `su`/`sudo -i` without a command: a nested session on a terminal, or run piped stdin as that user. */
+export async function loginOrRunStdin(ctx: Ctx, user: User, cwd?: string): Promise<number> {
+  if ((origins.get(ctx.shell) ?? ctx.shell).interactive || ctx.stdin.isTTY) {
+    login(ctx.shell, user, cwd);
+    return 0;
+  }
+  const sub = asUser(ctx.shell, user);
+  if (cwd) sub.cwd = cwd;
+  try {
+    return await runSource(sub, await readAll(ctx.stdin), streams(ctx), { subshell: true });
+  } finally {
+    const { user: caller } = ctx.shell;
+    ctx.vfs.cred = { uid: caller.uid, gid: caller.gid, groups: caller.groups };
+  }
 }
 
 /** The user who logged in on this terminal, before any su/sudo -i. */

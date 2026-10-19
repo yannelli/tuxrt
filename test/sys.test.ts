@@ -108,6 +108,7 @@ test('sudo and su', async () => {
   assert.match(await out('sudo -l'), /User ubuntu may run the following commands on ubuntu:\n    \(ALL : ALL\) ALL\n/);
   assert.deepEqual(await sh('sudo nosuch'), { stdout: '', stderr: 'sudo: nosuch: command not found\n', code: 1 });
   assert.equal((await sh('sudo cat /etc/shadow >/dev/null; cat /etc/shadow')).code, 1);
+  assert.equal(await out("sudo -i <<< 'whoami; pwd'; echo 'id -un' | sudo su -; whoami"), 'root\n/root\nroot\nubuntu\n');
   const run = await session();
   assert.equal((await run('sudo -i')).code, 0);
   assert.equal((await run('whoami; id -u; pwd; echo $HOME $SUDO_USER')).stdout, 'root\n0\n/root\n/root ubuntu\n');
