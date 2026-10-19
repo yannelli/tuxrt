@@ -117,6 +117,12 @@ export class VFS {
     return { dir, name };
   }
 
+  /** In a sticky directory (/tmp) only root, the directory owner or the entry owner may remove it. */
+  private checkSticky(dir: DirNode, node: VNode, path: string): void {
+    const { uid } = this.cred;
+    if (dir.mode & 0o1000 && uid !== 0 && uid !== dir.uid && uid !== node.uid) throw new FsError('EPERM', path);
+  }
+
   private insert(path: string, node: VNode): void {
     const { dir, name } = this.parentOf(path);
     this.check(dir, W | X, path);
@@ -153,7 +159,7 @@ export class VFS {
     if (node.sink) return node.sink(data);
     if (node.generate) throw new FsError('EACCES', path);
     node.content = append ? node.content + data : data;
-    node.mtime = Date.now();
+    node.mtime = node.ctime = Date.now();
   }
 
   /** Writing through a dangling symlink creates its target, like Linux. */
@@ -189,6 +195,7 @@ export class VFS {
     if (!node) throw new FsError('ENOENT', path);
     if (node.kind === 'dir') throw new FsError('EISDIR', path);
     this.check(dir, W | X, path);
+    this.checkSticky(dir, node, path);
     dir.children.delete(name);
     node.nlink--;
   }
@@ -200,6 +207,7 @@ export class VFS {
     if (node.kind !== 'dir') throw new FsError('ENOTDIR', path);
     if (node.children.size) throw new FsError('ENOTEMPTY', path);
     this.check(dir, W | X, path);
+    this.checkSticky(dir, node, path);
     dir.children.delete(name);
   }
 
@@ -211,9 +219,16 @@ export class VFS {
     const dst = this.parentOf(to);
     this.check(src.dir, W | X, from);
     this.check(dst.dir, W | X, to);
+    this.checkSticky(src.dir, node, from);
     const existing = dst.dir.children.get(dst.name);
+    if (existing === node) return;
     if (existing?.kind === 'dir' && (node.kind !== 'dir' || existing.children.size)) {
       throw new FsError(node.kind === 'dir' ? 'ENOTEMPTY' : 'EISDIR', to);
+    }
+    if (existing && existing.kind !== 'dir' && node.kind === 'dir') throw new FsError('ENOTDIR', to);
+    if (existing) {
+      this.checkSticky(dst.dir, existing, to);
+      existing.nlink--;
     }
     src.dir.children.delete(src.name);
     dst.dir.children.set(dst.name, node);
@@ -246,7 +261,10 @@ export class VFS {
 
   chown(path: string, uid: number, gid: number, follow = true): void {
     const node = this.lookup(path, follow);
-    if (this.cred.uid !== 0) throw new FsError('EPERM', path);
+    const { uid: me, gid: myGid, groups } = this.cred;
+    // Owners may change the group to one they belong to (chgrp); only root may change the owner.
+    const ownerChgrp = uid === node.uid && node.uid === me && (gid === myGid || groups.includes(gid));
+    if (me !== 0 && !ownerChgrp) throw new FsError('EPERM', path);
     node.uid = uid;
     node.gid = gid;
     node.ctime = Date.now();
@@ -254,7 +272,11 @@ export class VFS {
 
   touch(path: string, time = Date.now()): void {
     const node = this.tryLookup(path);
-    if (!node) return this.writeFile(path, '');
+    if (!node) {
+      this.writeFile(path, '');
+      this.lookup(path).mtime = time;
+      return;
+    }
     if (this.cred.uid !== 0 && node.uid !== this.cred.uid && !this.can(node, W)) throw new FsError('EACCES', path);
     node.mtime = time;
   }

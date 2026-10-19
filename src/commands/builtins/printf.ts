@@ -1,8 +1,9 @@
 import { ansiC } from '../../shell/expand.ts';
+import { float, integer, pad } from '../cformat.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { bfail } from '../util.ts';
 
-const SPEC = /%([-+ #0]*)(\*|\d+)?(?:\.(\*|\d+))?([diouxXeEfgGcsbq%])/g;
+const SPEC = /%([-+ #0]*)(\*|\d+)?(?:\.(\*|\d*))?([diouxXeEfFgGcsbq%])/g;
 
 function toNumber(s: string | undefined): number {
   if (s === undefined || s === '') return 0;
@@ -10,16 +11,6 @@ function toNumber(s: string | undefined): number {
   const n = /^[-+]?0[xX]/.test(s) ? parseInt(s, 16) : /^[-+]?0\d/.test(s) ? parseInt(s, 8) : Number(s);
   if (Number.isNaN(n)) throw new Error(`${s}: invalid number`);
   return n;
-}
-
-function pad(s: string, flags: string, width: number): string {
-  if (s.length >= width) return s;
-  if (flags.includes('-')) return s.padEnd(width);
-  if (flags.includes('0') && /^[-+]?\d/.test(s)) {
-    const sign = /^[-+]/.test(s) ? s[0] : '';
-    return sign + s.slice(sign.length).padStart(width - sign.length, '0');
-  }
-  return s.padStart(width);
 }
 
 /** Formats like printf(1). Returns the output; reuses the format while arguments remain. */
@@ -36,23 +27,12 @@ export function format(fmt: string, args: string[]): string {
       const width = w === '*' ? toNumber(next()) : Number(w ?? 0);
       const prec = p === '*' ? toNumber(next()) : p === undefined ? undefined : Number(p);
       const arg = next();
+      if (conv && /[diouxXeEfFgG]/.test(conv)) {
+        const n = toNumber(arg);
+        return pad(/[diouxX]/.test(conv) ? integer(conv, flags, prec, n) : float(conv, flags, prec, n), width, flags.includes('-'), flags.includes('0'));
+      }
       let s: string;
       switch (conv) {
-        case 'd':
-        case 'i': {
-          const n = Math.trunc(toNumber(arg));
-          s = (n >= 0 && flags.includes('+') ? '+' : n >= 0 && flags.includes(' ') ? ' ' : '') + String(n);
-          break;
-        }
-        case 'u': s = String(Math.abs(Math.trunc(toNumber(arg)))); break;
-        case 'o': s = (flags.includes('#') ? '0' : '') + Math.trunc(toNumber(arg)).toString(8); break;
-        case 'x': s = (flags.includes('#') ? '0x' : '') + Math.trunc(toNumber(arg)).toString(16); break;
-        case 'X': s = (flags.includes('#') ? '0X' : '') + Math.trunc(toNumber(arg)).toString(16).toUpperCase(); break;
-        case 'f': s = toNumber(arg).toFixed(prec ?? 6); break;
-        case 'e':
-        case 'E': s = toNumber(arg).toExponential(prec ?? 6).replace(/e([+-])(\d)$/, 'e$10$2'); if (conv === 'E') s = s.toUpperCase(); break;
-        case 'g':
-        case 'G': s = String(Number(toNumber(arg).toPrecision(prec || 6))); break;
         case 'c': s = (arg ?? '').charAt(0); break;
         case 'b': {
           const raw = arg ?? '';
@@ -64,8 +44,8 @@ export function format(fmt: string, args: string[]): string {
         case 'q': s = /^[\w./-]+$/.test(arg ?? '') ? (arg ?? "''") : `'${(arg ?? '').replace(/'/g, "'\\''")}'`; break;
         default: s = arg ?? '';
       }
-      if (prec !== undefined && (conv === 's' || conv === 'b')) s = s.slice(0, prec);
-      return pad(s, flags, width);
+      if (prec !== undefined) s = s.slice(0, prec);
+      return pad({ pre: '', body: s, zeroOk: false }, width, flags.includes('-'), false);
     });
     if (stop || i === start) break;
   } while (i < args.length);
