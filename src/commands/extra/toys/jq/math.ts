@@ -25,7 +25,7 @@ const frexp = (x: number): [number, number] => {
 const unary: Record<string, (x: number) => Value> = {
   floor: Math.floor, ceil: Math.ceil, round: (x) => Math.sign(x) * Math.round(Math.abs(x)), sqrt: Math.sqrt, fabs: Math.abs,
   trunc: Math.trunc, rint: (x) => x - Math.floor(x) === 0.5 ? 2 * Math.round(x / 2) : Math.round(x), nearbyint: (x) => unary.rint(x),
-  exp: Math.exp, exp2: (x) => 2 ** x, exp10: (x) => 10 ** x, expm1: Math.expm1, log: Math.log, log2: Math.log2,
+  exp: Math.exp, exp2: (x) => 2 ** x, exp10: (x) => 10 ** x, pow10: (x) => 10 ** x, expm1: Math.expm1, log: Math.log, log2: Math.log2,
   log10: Math.log10, log1p: Math.log1p, sin: Math.sin, cos: Math.cos, tan: Math.tan, asin: Math.asin, acos: Math.acos,
   atan: Math.atan, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, asinh: Math.asinh, acosh: Math.acosh,
   atanh: Math.atanh, cbrt: Math.cbrt, significand: (x) => frexp(x)[0] * 2, logb: (x) => frexp(x)[1] - 1,

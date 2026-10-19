@@ -1,8 +1,9 @@
-import type { Node } from './ast.ts';
+import { patternVars, type Node } from './ast.ts';
 import { assign } from './assign.ts';
 import { describe, tojson } from './dump.ts';
 import { format } from './formats.ts';
 import { binop } from './ops.ts';
+import { pipe } from './tail.ts';
 import { indexValue } from './paths.ts';
 import { Break, type Env, type Out, type Path } from './registry.ts';
 import { bind, call, defineFn, getVar, setVar } from './scope.ts';
@@ -94,10 +95,6 @@ function* iter(n: N<'iter'>, env: Env, v: Value, p: Path | null): Generator<Out>
     else if (isObj(t)) for (const [k, x] of t) yield [x, tp && [...tp, k]];
     else throw new JqError(`Cannot iterate over ${t === null ? 'null' : describe(t)}`);
   }
-}
-
-function* pipe(n: N<'pipe'>, env: Env, v: Value, p: Path | null): Generator<Out> {
-  for (const [x, xp] of ev(n.l, env, v, p)) yield* ev(n.r, env, x, xp);
 }
 
 function* comma(n: N<'comma'>, env: Env, v: Value, p: Path | null): Generator<Out> {
@@ -193,7 +190,24 @@ function* foreach(n: N<'foreach'>, env: Env, v: Value, p: Path | null): Generato
 }
 
 function* binding(n: N<'bind'>, env: Env, v: Value, p: Path | null): Generator<Out> {
+  if (n.alts.length) return yield* altBinding(n, env, v, p);
   for (const x of values(n.src, env, v)) for (const e of bind(n.pat, x, env, v)) yield* ev(n.body, e, v, p);
+}
+
+/** `?//`: every variable of every alternative is bound (null by default); an error moves on to the next pattern. */
+function* altBinding(n: N<'bind'>, env: Env, v: Value, p: Path | null): Generator<Out> {
+  const pats = [n.pat, ...n.alts];
+  const base = pats.flatMap(patternVars).reduce((e, name) => setVar(e, name, null), env);
+  for (const x of values(n.src, env, v)) {
+    for (let i = 0; i < pats.length; i++) {
+      try {
+        for (const e of bind(pats[i], x, base, v)) yield* ev(n.body, e, v, p);
+        break;
+      } catch (err) {
+        if (!(err instanceof JqError) || i === pats.length - 1) throw err;
+      }
+    }
+  }
 }
 
 function* label(n: N<'label'>, env: Env, v: Value, p: Path | null): Generator<Out> {

@@ -1,4 +1,5 @@
-import { Big, isObj, type Obj, type Value } from './value.ts';
+import { literal as numberLiteral } from './literal.ts';
+import { isObj, type Obj, type Value } from './value.ts';
 
 export class ParseError extends Error {}
 
@@ -13,8 +14,7 @@ function literal(tok: string): Value | string {
   if (word !== undefined) return tok !== word ? 'Invalid literal' : word === 'nan' ? NaN : word === 'null' ? null : word === 'true';
   if (tok[0] === "'") return "Invalid string literal; expected \", but got '";
   if (!NUMBER.test(tok)) return 'Invalid numeric literal';
-  const n = Number(tok);
-  return /^-?\d+$/.test(tok) && !Number.isSafeInteger(n) ? new Big(tok) : n;
+  return numberLiteral(tok);
 }
 
 function unescape(raw: string): string {
@@ -110,7 +110,7 @@ export function* parseJson(text: string): Generator<{ value: Value; end: number 
       value(v as Value);
     }
     if (!stack.length && next !== undefined) {
-      yield { value: next, end };
+      yield { value: next, end: i };
       next = undefined;
     }
   }

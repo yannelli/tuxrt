@@ -143,6 +143,13 @@ native('input', 0, function* (_a, env, v, p) {
 native('inputs', 0, function* (_a, env, v, p) {
   for (let x = env.rt.input(); x !== undefined; x = env.rt.input()) yield out(x, v, p);
 });
+native('input_line_number', 0, function* (_a, env, v, p) {
+  yield out(env.rt.line(), v, p);
+});
+native('modulemeta', 0, function* (_a, env, v, p) {
+  if (typeof v !== 'string') throw new JqError('modulemeta input module not a string');
+  yield out(env.rt.modulemeta(v), v, p);
+});
 native('input_filename', 0, function* (_a, env, v, p) {
   yield out(env.rt.filename(), v, p);
 });

@@ -11,6 +11,7 @@ export interface Options {
   /** Named globals; files are read later for --slurpfile/--rawfile. */
   named: { name: string; value?: Value; file?: string; raw?: boolean }[];
   positional: Value[];
+  libraryPaths: string[];
 }
 
 const SHORT: Record<string, string> = {
@@ -88,7 +89,7 @@ function json(text: string, what: string): Value {
 
 /** jq's own argument rules: options anywhere, bundled short flags, two-value --arg forms. */
 export function parseCli(args: string[]): Options {
-  const o: Options = { filter: null, files: [], flags: new Set(), indent: 2, named: [], positional: [] };
+  const o: Options = { filter: null, files: [], flags: new Set(), indent: 2, named: [], positional: [], libraryPaths: [] };
   let mode: 'files' | 'args' | 'jsonargs' = 'files';
   let done = false;
   const take = (i: number, n: number, opt: string, usage: string): string[] => {
@@ -108,9 +109,13 @@ export function parseCli(args: string[]): Options {
       continue;
     }
     if (!a.startsWith('--')) {
-      for (const c of a.slice(1)) {
-        if (c === 'L') i++;
-        else if (SHORT[c]) o.flags.add(SHORT[c]);
+      for (let j = 1; j < a.length; j++) {
+        const c = a[j];
+        if (c === 'L') {
+          o.libraryPaths.push(j + 1 < a.length ? a.slice(j + 1) : take(i++, 1, 'library-path', 'dir')[0]);
+          break;
+        }
+        if (SHORT[c]) o.flags.add(SHORT[c]);
         else throw new CliError(`Unknown option: ${a}`);
       }
       continue;
@@ -130,7 +135,7 @@ export function parseCli(args: string[]): Options {
       if (n > 7) throw new CliError('Cannot indent more than 7 characters');
       o.indent = n;
       i++;
-    } else if (name === 'library-path') i++;
+    } else if (name === 'library-path') o.libraryPaths.push(take(i++, 1, name, 'dir')[0]);
     else if (FLAGS.has(name)) {
       o.flags.add(name);
       if (name === 'args' || name === 'jsonargs') mode = name;

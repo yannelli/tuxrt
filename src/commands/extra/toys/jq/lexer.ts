@@ -1,4 +1,5 @@
-import { Big, CompileError, type Value } from './value.ts';
+import { literal } from './literal.ts';
+import { CompileError, type Value } from './value.ts';
 
 export type Tok =
   | { t: 'num'; v: Value; pos: number }
@@ -7,11 +8,13 @@ export type Tok =
   | { t: 'eof'; pos: number };
 
 export const KEYWORDS = new Set([
-  'def', 'if', 'then', 'elif', 'else', 'end', 'as', 'reduce', 'foreach', 'try', 'catch', 'label', 'import', 'include', 'and', 'or', '__loc__',
+  'def', 'if', 'then', 'elif', 'else', 'end', 'as', 'reduce', 'foreach', 'try', 'catch', 'label', 'import', 'include', 'module', 'and', 'or', '__loc__',
 ]);
 
-const OPS = ['|=', '+=', '-=', '*=', '/=', '%=', '//=', '//', '==', '!=', '<=', '>=', '..', ...'.[]{}()|,:;=<>+-*/%?$'];
+const OPS = ['?//', '|=', '+=', '-=', '*=', '/=', '%=', '//=', '//', '==', '!=', '<=', '>=', '..', ...'.[]{}()|,:;=<>+-*/%?$'];
 const IDENT = /[a-zA-Z_][a-zA-Z0-9_]*/y;
+/** Function and variable names may be module-qualified: `mod::fn`, `$data::data`. */
+const QUALIFIED = /[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z_][a-zA-Z0-9_]*)*/y;
 const NUM = /(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/y;
 const STR_ESC: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
 
@@ -77,13 +80,12 @@ export function lex(src: string, start = 0, interp = false): { toks: Tok[]; end:
     }
     const n = sticky(NUM, src, i);
     if (n) {
-      const v = Number(n);
-      toks.push({ t: 'num', v: /^\d+$/.test(n) && !Number.isSafeInteger(v) ? new Big(n) : v, pos: i });
+      toks.push({ t: 'num', v: literal(n), pos: i });
       i += n.length;
       continue;
     }
     if (c === '.' || c === '$' || c === '@') {
-      const id = sticky(IDENT, src, i + 1) ?? (c === '@' ? sticky(/[a-zA-Z0-9_]+/y, src, i + 1) : null);
+      const id = sticky(c === '$' ? QUALIFIED : IDENT, src, i + 1) ?? (c === '@' ? sticky(/[a-zA-Z0-9_]+/y, src, i + 1) : null);
       if (id) {
         toks.push({ t: c === '.' ? 'field' : c === '$' ? 'var' : 'fmt', v: id, pos: i });
         i += id.length + 1;
@@ -91,7 +93,7 @@ export function lex(src: string, start = 0, interp = false): { toks: Tok[]; end:
       }
       if (c === '@') throw invalid(i);
     }
-    const id = sticky(IDENT, src, i);
+    const id = sticky(QUALIFIED, src, i);
     if (id) {
       toks.push({ t: 'ident', v: id, pos: i });
       i += id.length;

@@ -30,7 +30,9 @@ test('pretty, compact, raw and sorted output', async () => {
 });
 
 test('number formatting', async () => {
-  assert.equal(await jqn('1e100, 1.5, 0.00001, 3.0, -0, 1e17, 100000000000000000000, 0.1 + 0.2'), '1e+100\n1.5\n1e-05\n3\n-0\n1e+17\n100000000000000000000\n0.30000000000000004\n');
+  assert.equal(await jqn('1e100, 1.5, 0.00001, 3.0, -0, 1e17, 100000000000000000000, 0.1 + 0.2'), '1E+100\n1.5\n0.00001\n3.0\n-0\n1E+17\n100000000000000000000\n0.30000000000000004\n');
+  assert.equal(await jqn('1e100 + 0, 3.0 * 1, 1e-5 + 0'), '1e+100\n3\n1e-05\n');
+  assert.equal(await out('jq -c ". , map(. + 0), (.[0] == 1)"', '[1.000, 0.10, 1e2]'), '[1.000,0.10,1E+2]\n[1,0.1,100]\ntrue\n');
   assert.equal(await out('jq -c ". , . + 1"', '12345678901234567890'), '12345678901234567890\n12345678901234567000\n');
   assert.equal(await jqn('[nan, infinite, -infinite]'), '[null,1.7976931348623157e+308,-1.7976931348623157e+308]\n');
 });

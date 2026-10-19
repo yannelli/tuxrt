@@ -15,7 +15,7 @@ const ESCAPES: Record<number, string> = { 8: '\\b', 9: '\\t', 10: '\\n', 12: '\\
 const hex4 = (c: number) => `\\u${c.toString(16).padStart(4, '0')}`;
 
 /** jq's dtoa formatting: shortest round-trip digits, exponent past 17 significant places or below 1e-4. */
-function fmtNum(n: number): string {
+export function fmtNum(n: number): string {
   if (Number.isNaN(n)) return 'null';
   if (!Number.isFinite(n)) n = n > 0 ? Number.MAX_VALUE : -Number.MAX_VALUE;
   if (n === 0) return Object.is(n, -0) ? '-0' : '0';

@@ -9,8 +9,11 @@ export interface Runtime {
   /** Next input value for `input`/`inputs`, or undefined when exhausted. */
   input(): Value | undefined;
   filename(): Value;
+  /** Newlines consumed from the current input so far (input_line_number). */
+  line(): number;
   stderr(s: string): void;
   env: Obj;
+  modulemeta(name: string): Value;
 }
 
 interface VarLink {

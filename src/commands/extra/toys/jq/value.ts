@@ -1,4 +1,4 @@
-/** Integer literal beyond 2^53, kept verbatim so pass-through output matches jq 1.7's literal preservation. */
+/** A number literal whose canonical decimal text differs from JS's rendering (1.000, 1E+2, ints beyond 2^53). */
 export class Big {
   readonly n: number;
   readonly s: string;
@@ -73,7 +73,7 @@ function cmpStr(a: string, b: string): number {
 export const sortedKeys = (o: Obj): string[] => [...o.keys()].sort(cmpStr);
 
 function cmpNum(a: number | Big, b: number | Big): number {
-  if (a instanceof Big && b instanceof Big) {
+  if (a instanceof Big && b instanceof Big && /^-?\d+$/.test(a.s) && /^-?\d+$/.test(b.s)) {
     const x = BigInt(a.s);
     const y = BigInt(b.s);
     return x < y ? -1 : x > y ? 1 : 0;

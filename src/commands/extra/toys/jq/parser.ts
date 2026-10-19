@@ -1,4 +1,4 @@
-import { ID, lit, type FuncDef, type Node } from './ast.ts';
+import { ID, lit, type Dep, type FuncDef, type Node, type Pattern, type Program } from './ast.ts';
 import { Cursor, index, type StrTok } from './cursor.ts';
 import { KEYWORDS, lex } from './lexer.ts';
 
@@ -57,8 +57,10 @@ class Parser extends Cursor {
     const t = this.postfix();
     if (!this.eatKw('as')) return t;
     const pat = this.pattern();
+    const alts: Pattern[] = [];
+    while (this.eatOp('?//')) alts.push(this.pattern());
     this.expectOp('|');
-    return { k: 'bind', src: t, pat, body: this.pipe() };
+    return { k: 'bind', src: t, pat, alts, body: this.pipe() };
   }
 
   private postfix(): Node {
@@ -197,6 +199,40 @@ class Parser extends Cursor {
     return out;
   }
 
+  /** `module {...};` then any `import "p" as name [meta];` / `include "p" [meta];` lines. */
+  directives(): Pick<Program, 'meta' | 'deps'> {
+    let meta: Node | null = null;
+    if (this.eatKw('module')) {
+      meta = this.constObject();
+      this.expectOp(';');
+    }
+    const deps: Dep[] = [];
+    for (let t = this.peek(); t.t === 'ident' && (t.v === 'import' || t.v === 'include'); t = this.peek()) {
+      this.i++;
+      const path = this.next();
+      if (path.t !== 'str' || path.parts.length !== 1 || typeof path.parts[0] !== 'string') this.fail(path);
+      let alias: string | null = null;
+      let data = false;
+      if (t.v === 'import') {
+        this.expectKw('as');
+        const a = this.next();
+        if (a.t !== 'ident' && a.t !== 'var') this.fail(a);
+        alias = a.v;
+        data = a.t === 'var';
+      }
+      const depMeta = this.isOp('{') ? this.constObject() : null;
+      this.expectOp(';');
+      deps.push({ path: path.parts[0] as string, alias, data, meta: depMeta, pos: t.pos });
+    }
+    return { meta, deps };
+  }
+
+  private constObject(): Node {
+    const t = this.peek();
+    if (!this.eatOp('{')) this.fail(t);
+    return this.object();
+  }
+
   protected string(tok: StrTok, fmt: string | null): Node {
     const parts = tok.parts.map((p) => {
       if (typeof p === 'string') return p;
@@ -209,12 +245,21 @@ class Parser extends Cursor {
   }
 }
 
-export function parse(src: string): Node {
+export const parseDefs = (src: string): FuncDef[] => new Parser(lex(src).toks, src).defs();
+
+/** A main program: directives, then a filter (which may start with defs). */
+export function parseProgram(src: string): Program {
   const p = new Parser(lex(src).toks, src);
-  if (p.peek().t === 'eof') return ID;
-  const n = p.pipe();
+  const head = p.directives();
+  if (p.peek().t === 'eof') return { ...head, body: ID, defs: [] };
+  const body = p.pipe();
   if (p.peek().t !== 'eof') p.fail();
-  return n;
+  return { ...head, body, defs: [] };
 }
 
-export const parseDefs = (src: string): FuncDef[] => new Parser(lex(src).toks, src).defs();
+/** A library module: directives, then only function definitions. */
+export function parseModule(src: string): Program {
+  const p = new Parser(lex(src).toks, src);
+  const head = p.directives();
+  return { ...head, body: ID, defs: p.defs() };
+}

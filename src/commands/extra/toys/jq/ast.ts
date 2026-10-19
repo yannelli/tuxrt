@@ -34,10 +34,33 @@ export type Node =
   | { k: 'if'; cond: Node; then: Node; else: Node | null }
   | { k: 'reduce'; src: Node; pat: Pattern; init: Node; update: Node }
   | { k: 'foreach'; src: Node; pat: Pattern; init: Node; update: Node; extract: Node | null }
-  | { k: 'bind'; src: Node; pat: Pattern; body: Node }
+  | { k: 'bind'; src: Node; pat: Pattern; alts: Pattern[]; body: Node }
   | { k: 'label'; name: string; body: Node }
   | { k: 'break'; name: string; pos: number }
   | { k: 'def'; fn: FuncDef; body: Node };
 
+/** An `import`/`include` directive; `alias` is null for include, `data` marks `import "x" as $name`. */
+export interface Dep {
+  path: string;
+  alias: string | null;
+  data: boolean;
+  meta: Node | null;
+  pos: number;
+}
+
+export interface Program {
+  meta: Node | null;
+  deps: Dep[];
+  body: Node;
+  defs: FuncDef[];
+}
+
 export const ID: Node = { k: 'id' };
+
+/** Every variable a pattern binds, in order. */
+export function patternVars(p: Pattern): string[] {
+  if (p.k === 'var') return [p.name];
+  if (p.k === 'arr') return p.items.flatMap(patternVars);
+  return p.entries.flatMap((e) => [...(e.bind ? [e.bind] : []), ...(e.pat ? patternVars(e.pat) : [])]);
+}
 export const lit = (v: Value): Node => ({ k: 'lit', v });

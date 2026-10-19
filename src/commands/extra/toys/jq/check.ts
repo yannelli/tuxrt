@@ -61,7 +61,7 @@ export function check(root: Node, builtins: Set<string>, globals: string[]): Com
       }
       case 'bind':
         walk(n.src, fns, vars);
-        walk(n.body, fns, pattern(n.pat, fns, vars));
+        walk(n.body, fns, n.alts.reduce((acc, alt) => pattern(alt, fns, acc), pattern(n.pat, fns, vars)));
         return;
       case 'reduce':
       case 'foreach': {
