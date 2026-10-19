@@ -9,6 +9,7 @@ const messages = {
   EINVAL: 'Invalid argument',
   EPERM: 'Operation not permitted',
   EBUSY: 'Device or resource busy',
+  EIO: 'Input/output error',
 } as const;
 
 export type ErrCode = keyof typeof messages;

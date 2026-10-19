@@ -12,11 +12,15 @@ interface BaseNode {
   gid: number;
   mtime: number;
   ctime: number;
+  /** Set on nodes backed by a host directory (see hostfs.ts); undefined for the in-memory filesystem. */
+  mount?: object;
 }
 
 export interface FileNode extends BaseNode {
   kind: 'file';
   content: string;
+  /** Byte size when it is known without reading `content` (host-backed files). */
+  readonly size?: number;
   /** Dynamic content (procfs, devices). Writes go to `sink` when present. */
   generate?: () => string;
   sink?: (data: string) => void;

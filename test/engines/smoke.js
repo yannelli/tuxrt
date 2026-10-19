@@ -28,6 +28,30 @@
       const r = await rt.exec(cmd);
       if (r.stdout !== want) failures.push({ cmd, want, got: r.stdout, stderr: r.stderr });
     }
+    // A host workspace as a Swift bridge would expose it, kept in a Map here.
+    const files = new Map([['/', null], ['/notes.txt', 'from the host\n']]);
+    const missing = () => Object.assign(new Error('missing'), { code: 'ENOENT' });
+    const host = {
+      lstat: (p) => (files.has(p) ? { kind: files.get(p) === null ? 'dir' : 'file', size: (files.get(p) ?? '').length, mtime: 0 } : null),
+      readdir: (p) => [...files.keys()].filter((k) => k !== p && k.slice(0, k.lastIndexOf('/') || 1) === p).map((k) => k.slice(k.lastIndexOf('/') + 1)),
+      readFile: (p) => (files.has(p) ? Uint8Array.from(files.get(p), (c) => c.charCodeAt(0)) : (() => { throw missing(); })()),
+      writeFile: (p, data) => files.set(p, String.fromCharCode(...data)),
+      mkdir: (p) => files.set(p, null),
+      unlink: (p) => files.delete(p),
+      rmdir: (p) => files.delete(p),
+      rename: (a, b) => (files.set(b, files.get(a)), files.delete(a)),
+    };
+    const agent = await tuxrt.AgentShell.create({ mounts: { '/home/ubuntu/ws': host }, timeoutMs: 200 });
+    const tool = [
+      [{ command: 'pwd; cat notes.txt' }, '/home/ubuntu/ws\nfrom the host'],
+      [{ command: 'echo agent > out.txt && mv out.txt done.txt && ls' }, 'done.txt\nnotes.txt'],
+      [{ command: 'sleep 2' }, '[killed: timed out after 0.2s]'],
+    ];
+    for (const [input, want] of tool) {
+      const got = (await agent.run(input)).output;
+      if (got !== want) failures.push({ input, want, got });
+    }
+    if (files.get('/done.txt') !== 'agent\n') failures.push({ host: [...files] });
   } catch (e) {
     failures.push({ error: String(e && e.stack || e) });
   }

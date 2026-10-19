@@ -27,6 +27,26 @@ export class BufferWriter implements Writer {
   }
 }
 
+/** Keeps the first `limit` characters; writing past it fails like a pipe whose reader left, so producers stop. */
+export class CappedWriter extends BufferWriter {
+  truncated = false;
+  private readonly limit: number;
+
+  constructor(limit: number) {
+    super();
+    this.limit = limit;
+  }
+
+  override write(data: string): void {
+    if (this.truncated) throw new BrokenPipe();
+    const room = this.limit - this.data.length;
+    if (data.length <= room) return super.write(data);
+    super.write(data.slice(0, room));
+    this.truncated = true;
+    throw new BrokenPipe();
+  }
+}
+
 export class StringReader implements Reader {
   private data: string | null;
 

@@ -19,9 +19,13 @@ export class VFS {
     this.root = this.newDir(0o755);
   }
 
+  allocIno(): number {
+    return this.inodes.next++;
+  }
+
   private base(mode: number) {
     const now = Date.now();
-    return { ino: this.inodes.next++, mode, nlink: 1, uid: this.cred.uid, gid: this.cred.gid, mtime: now, ctime: now };
+    return { ino: this.allocIno(), mode, nlink: 1, uid: this.cred.uid, gid: this.cred.gid, mtime: now, ctime: now };
   }
 
   newDir(mode = 0o777 & ~this.umask): DirNode {
@@ -143,7 +147,7 @@ export class VFS {
   stat(path: string, follow = true): Stat {
     const n = this.lookup(path, follow);
     const size =
-      n.kind === 'dir' ? 4096 : n.kind === 'symlink' ? n.target.length : n.generate ? 0 : byteLength(n.content);
+      n.kind === 'dir' ? 4096 : n.kind === 'symlink' ? n.target.length : n.generate ? 0 : (n.size ?? byteLength(n.content));
     const nlink = n.kind === 'dir' ? 2 + [...n.children.values()].filter((c) => c.kind === 'dir').length : n.nlink;
     return { kind: n.kind, ino: n.ino, mode: n.mode, uid: n.uid, gid: n.gid, size, nlink, mtime: n.mtime, ctime: n.ctime };
   }
@@ -239,8 +243,9 @@ export class VFS {
       this.checkSticky(dst.dir, existing, to);
       existing.nlink--;
     }
+    // Set before delete so a host-backed directory sees a rename rather than a removal; across filesystems it is copy and remove, as mv does.
+    dst.dir.children.set(dst.name, node.mount === dst.dir.mount ? node : this.detach(node));
     src.dir.children.delete(src.name);
-    dst.dir.children.set(dst.name, node);
     node.ctime = Date.now();
   }
 
@@ -248,9 +253,18 @@ export class VFS {
     this.insert(path, this.newLink(target));
   }
 
+  /** An in-memory copy of a node tree, for moving it onto another filesystem. */
+  private detach(node: VNode): VNode {
+    if (!node.mount) return node;
+    const copy: VNode =
+      node.kind === 'file' ? this.newFile(node.content, node.mode) : node.kind === 'symlink' ? this.newLink(node.target) : this.newDir(node.mode);
+    if (node.kind === 'dir' && copy.kind === 'dir') for (const [name, child] of node.children) copy.children.set(name, this.detach(child));
+    return Object.assign(copy, { uid: node.uid, gid: node.gid, mtime: node.mtime });
+  }
+
   link(existing: string, path: string): void {
     const node = this.lookup(existing);
-    if (node.kind === 'dir') throw new FsError('EPERM', existing);
+    if (node.kind === 'dir' || node.mount || this.parentOf(path).dir.mount) throw new FsError('EPERM', existing);
     this.insert(path, node);
     node.nlink++;
   }

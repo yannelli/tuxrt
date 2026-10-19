@@ -11,7 +11,7 @@ interface Snapshot {
   root: SNode;
 }
 
-/** Virtual mounts are regenerated on restore rather than saved. */
+/** Virtual mounts are regenerated on restore rather than saved; host mounts are the host's to re-attach. */
 const VIRTUAL = new Set(['/proc', '/dev']);
 
 export function snapshot(vfs: VFS): string {
@@ -22,7 +22,7 @@ export function snapshot(vfs: VFS): string {
     const e: Record<string, SNode> = {};
     for (const [name, child] of node.children) {
       const childPath = `${path === '/' ? '' : path}/${name}`;
-      if (!VIRTUAL.has(childPath)) e[name] = save(child, childPath);
+      if (!VIRTUAL.has(childPath) && !child.mount) e[name] = save(child, childPath);
     }
     return { ...meta, k: 'd', e };
   };

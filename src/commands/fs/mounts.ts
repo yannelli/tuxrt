@@ -38,7 +38,7 @@ export function usedKb(vfs: VFS, m: Mount): number {
   for (const part of split(m.target)) node = node?.kind === 'dir' ? node.children.get(part) : undefined;
   const others = new Set(mounts().map((o) => o.target).filter((t) => t !== m.target));
   const size = (n: VNode, path: string): number => {
-    if (n.kind === 'symlink') return 0;
+    if (n.kind === 'symlink' || n.mount) return 0;
     if (n.kind === 'file') return n.generate ? 0 : Math.ceil(byteLength(n.content) / 4096) * 4;
     let kb = path === m.target ? 0 : 4;
     for (const [name, child] of n.children) {

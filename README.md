@@ -37,6 +37,29 @@ const { stdout, code } = await rt.exec('echo hi | tr a-z A-Z');
 
 `rt.run(src, { stdin, stdout, stderr })` streams output instead of capturing it, and `rt.interrupt()` delivers SIGINT to the foreground job.
 
+### Agent harness
+
+`AgentShell` gives an agent one persistent machine behind a `bash` tool:
+
+```ts
+import { AgentShell, BASH_TOOL, nodeHostFs } from 'tuxrt';
+
+const shell = await AgentShell.create({
+  mounts: { '/home/ubuntu/workspace': nodeHostFs('./workspace') }, // the real directory, read and written live
+  timeoutMs: 120_000, // per call; the model may ask for up to maxTimeoutMs (600 s)
+  maxOutput: 30_000,  // characters of stdout and of stderr kept per call
+});
+
+// Register BASH_TOOL with the model (`input_schema`; use BASH_INPUT_SCHEMA as OpenAI `parameters`), then per call:
+const { output } = await shell.run(toolCall.input); // { command, timeout?, restart? } -> text for the tool result
+```
+
+- **Session state.** The cwd, variables and functions carry over between calls. `restart: true` or `exit` gives a fresh shell on the same files.
+- **Results.** `output` combines stdout and stderr. It ends with `[exit code N]`, `[killed: timed out after Ns]` or `[output truncated after N characters]` when one applies. A command that floods output stops at the cap, the way `yes | head` does.
+- **Persistence.** `shell.snapshot()` returns the filesystem as JSON, and `AgentShell.create({ state })` resumes from it. Mounted host directories are not part of the snapshot.
+- **Mounts.** `HostFs` is a small synchronous interface: `lstat`, `readdir`, `readFile`, `writeFile`, `mkdir`, `unlink`, `rmdir`, `rename`, plus optional `readlink`, `symlink`, `chmod` and `utimes`. On iOS, implement it with Swift functions exposed to the `JSContext`. `nodeHostFs(dir)` is the Node version, and it refuses any path or host symlink that leads outside `dir`. Symlinks inside a mount resolve within the machine, not on the host.
+- **Lower level.** `Runtime` offers `rt.exec(cmd, { stdin, timeoutMs, maxOutput })` and `rt.mount(path, hostFs)`.
+
 ### Any JavaScript engine
 
 The core is plain ECMAScript 2020 with no Node, DOM or `node:` imports, enforced by `tsconfig.core.json`. It runs on Node, Bun, Deno, browsers, JavaScriptCore (iOS and macOS, including a Swift `JSContext`), Hermes and QuickJS. On Node, the `node` export condition adds real sockets and resolvers, native deflate, process stats, a worker-thread `jq`, and the `node` command. Every other engine gets `tuxrt/portable`, or `tuxrt/bundle`, a single IIFE file that defines a global `tuxrt` for hosts that evaluate scripts.

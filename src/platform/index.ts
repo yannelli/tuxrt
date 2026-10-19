@@ -40,6 +40,11 @@ interface HostGlobals {
   AbortController?: new () => { signal: unknown; abort(reason?: unknown): void };
 }
 
+interface Timer {
+  cancelled: boolean;
+  id: unknown;
+}
+
 function missing(name: string): never {
   throw new Error(`tuxrt: the host has no ${name}; provide it with configurePlatform({ ${name} })`);
 }
@@ -70,8 +75,18 @@ export function portablePlatform(): Platform {
       if (g.crypto) return g.crypto.getRandomValues(b);
       return b.map(() => Math.floor(Math.random() * 256));
     },
-    setTimeout: (fn, ms) => (g.setTimeout ?? missing('setTimeout'))(fn, ms),
-    clearTimeout: (h) => g.clearTimeout?.(h),
+    // Some hosts (the jsc shell, bare JSContext bridges) have no clearTimeout, so cancellation is tracked here too.
+    setTimeout: (fn, ms) => {
+      const timer: Timer = { cancelled: false, id: undefined };
+      timer.id = (g.setTimeout ?? missing('setTimeout'))(() => timer.cancelled || fn(), ms);
+      return timer;
+    },
+    clearTimeout: (h) => {
+      const timer = h as Timer | undefined;
+      if (!timer) return;
+      timer.cancelled = true;
+      g.clearTimeout?.(timer.id);
+    },
     yield: yielder(g),
     http,
     dns,

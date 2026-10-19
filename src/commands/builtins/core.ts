@@ -12,7 +12,9 @@ const KEYWORDS = new Set(['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'f
 
 function cd(ctx: Ctx): number {
   const { shell } = ctx;
-  const args = ctx.args.filter((a) => a !== '-L' && a !== '-P');
+  const args = [...ctx.args];
+  while (/^-[LPe@]+$/.test(args[0] ?? '')) args.shift();
+  if (args[0] === '--') args.shift();
   if (args.length > 1) return bfail(ctx, 'too many arguments');
   let target = args[0] ?? shell.get('HOME');
   if (target === undefined) return bfail(ctx, 'HOME not set');
