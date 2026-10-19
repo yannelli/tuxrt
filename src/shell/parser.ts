@@ -1,4 +1,5 @@
-import { IncompleteInput, ShellSyntaxError, type CondWord, type Node, type Redir } from './ast.ts';
+import type { CondWord, Node, Redir } from './ast.ts';
+import { TokenCursor } from './cursor.ts';
 import { tokenize, type Token } from './lexer.ts';
 
 const TERMINATORS = new Set(['then', 'elif', 'else', 'fi', 'do', 'done', 'esac', '}']);
@@ -9,48 +10,12 @@ export function parse(src: string): Node {
   return new Parser(tokenize(src)).program();
 }
 
-class Parser {
-  private pos = 0;
-  private readonly tokens: Token[];
-
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
-  }
-
+class Parser extends TokenCursor {
   program(): Node {
     const node = this.list();
     const t = this.peek();
     if (t.t !== 'eof') this.unexpected(t);
     return node;
-  }
-
-  private peek(offset = 0): Token {
-    return this.tokens[Math.min(this.pos + offset, this.tokens.length - 1)];
-  }
-
-  private isOp(v: string, offset = 0): boolean {
-    const t = this.peek(offset);
-    return t.t === 'op' && t.v === v;
-  }
-
-  private isWord(v: string): boolean {
-    const t = this.peek();
-    return t.t === 'word' && t.v === v;
-  }
-
-  private unexpected(t: Token): never {
-    if (t.t === 'eof') throw new IncompleteInput('syntax error: unexpected end of file');
-    const text = t.t === 'redir' ? t.op : t.v === '\n' ? 'newline' : t.v;
-    throw new ShellSyntaxError(`syntax error near unexpected token \`${text}'`);
-  }
-
-  private expectWord(v: string): void {
-    if (!this.isWord(v)) this.unexpected(this.peek());
-    this.pos++;
-  }
-
-  private skipNewlines(): void {
-    while (this.isOp('\n')) this.pos++;
   }
 
   private atListEnd(): boolean {
