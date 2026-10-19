@@ -21,6 +21,11 @@ Options:
   -V, --version   print version
 `;
 
+/** Scripts saved on Windows arrive with CRLF; normalize so a stray \r never leaks into arguments. */
+function toLF(text: string): string {
+  return text.replace(/\r\n/g, '\n');
+}
+
 async function main(argv: string[]): Promise<number> {
   let command: string | undefined;
   let user: string | undefined;
@@ -53,12 +58,12 @@ async function main(argv: string[]): Promise<number> {
   } else {
     let src = command;
     if (src === undefined && rest.length) {
-      src = readFileSync(rest[0], 'utf8');
+      src = toLF(readFileSync(rest[0], 'utf8'));
       rt.shell.argv0 = rest.shift()!;
     } else if (src !== undefined && rest.length) rt.shell.argv0 = rest.shift()!;
     rt.shell.positional = rest;
     const stdin = src === undefined || process.stdin.isTTY ? EMPTY : streamReader(process.stdin);
-    src ??= await readAll(streamReader(process.stdin));
+    src ??= toLF(await readAll(streamReader(process.stdin)));
     code = await rt.run(src, { stdin, stdout, stderr });
     if (rt.exited !== null) code = rt.exited;
   }
