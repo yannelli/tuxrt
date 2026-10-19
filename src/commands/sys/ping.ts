@@ -1,4 +1,5 @@
-import { isIP } from 'node:net';
+import { isIP } from '../../platform/dns.ts';
+import { platform } from '../../platform/index.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, parseArgs, sleep } from '../util.ts';
 import { isLocal, ms, probe, ResolveError, resolveHost, reverseName, type Family } from './probe.ts';
@@ -40,17 +41,17 @@ async function ping(ctx: Ctx): Promise<number> {
     : `PING ${host}(${isIP(host) ? addr : `${host} (${addr})`}) ${size} data bytes\n`);
   const ttl = isLocal(addr) ? 64 : 63;
   const times: number[] = [];
-  const start = performance.now();
+  const start = platform.now();
   let last = start;
   let sent = 0;
   const replies: Promise<void>[] = [];
-  for (let seq = 1; seq <= count && !ctx.signal.aborted && performance.now() - start < deadline * 1000; seq++) {
+  for (let seq = 1; seq <= count && !ctx.signal.aborted && platform.now() - start < deadline * 1000; seq++) {
     sent++;
-    last = performance.now();
+    last = platform.now();
     replies.push(probe(addr, wait * 1000, ctx.signal).then((rtt) => {
       if (rtt === null || ctx.signal.aborted) return;
       times.push(rtt);
-      last = performance.now();
+      last = platform.now();
       if (!opts.q) ctx.stdout.write(`${size + 8} bytes from ${from}: icmp_seq=${seq} ttl=${ttl} time=${ms(rtt)} ms\n`);
     }));
     if (seq < count) await sleep(interval * 1000, ctx.signal);

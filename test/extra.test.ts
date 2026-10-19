@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { after, before, test } from 'node:test';
-import { machine, sh } from './helpers.ts';
+import { machine, NODE_ONLY, sh } from './helpers.ts';
 
 const out = async (cmd: string, stdin?: string) => (await sh(cmd, stdin)).stdout;
 
-test('node: -e, -p, --version, argv', async () => {
+test('node: -e, -p, --version, argv', { skip: NODE_ONLY }, async () => {
   assert.equal(await out(`node -e 'console.log("hi", 1 + 1, { a: [1] })'`), 'hi 2 { a: [ 1 ] }\n');
   assert.equal(await out(`node -p '6 * 7'`), '42\n');
   assert.equal(await out(`node -pe '"str"'`), 'str\n');
@@ -15,7 +15,7 @@ test('node: -e, -p, --version, argv', async () => {
   assert.equal(await out(`node -p 'process.platform + " " + require("os").type() + " " + require("os").hostname()'`), 'linux Linux ubuntu\n');
 });
 
-test('node: scripts from the VFS with fs, relative modules and JSON', async () => {
+test('node: scripts from the VFS with fs, relative modules and JSON', { skip: NODE_ONLY }, async () => {
   const run = await machine();
   await run(`printf 'module.exports = { add: (a, b) => a + b };\\n' > lib.js; printf '{"name": "demo", "n": 3}' > data.json`);
   const script = [
@@ -37,7 +37,7 @@ test('node: scripts from the VFS with fs, relative modules and JSON', async () =
   assert.equal(exec.code, 7);
 });
 
-test('node: errors, exit codes and uncaught exceptions', async () => {
+test('node: errors, exit codes and uncaught exceptions', { skip: NODE_ONLY }, async () => {
   assert.equal(await out(`node -e 'process.exit(3); console.log("no")'; echo $?`), '3\n');
   const thrown = await sh(`node -e 'throw new Error("boom")'`);
   assert.equal(thrown.code, 1);
@@ -57,7 +57,7 @@ test('node: errors, exit codes and uncaught exceptions', async () => {
   assert.equal((await sh('node --bogus')).code, 9);
 });
 
-test('node: event loop ordering, timers and top-level await', async () => {
+test('node: event loop ordering, timers and top-level await', { skip: NODE_ONLY }, async () => {
   const order = `setTimeout(() => console.log("t2"), 20); setTimeout(() => console.log("t1"), 5);
     setImmediate(() => console.log("immediate")); Promise.resolve().then(() => console.log("micro"));
     process.nextTick(() => console.log("tick")); console.log("sync")`;
@@ -72,7 +72,7 @@ test('node: event loop ordering, timers and top-level await', async () => {
   assert.equal(await out(`node -e 'process.on("exit", (c) => console.log("exit", c)); process.exitCode = 4'; echo $?`), 'exit 4\n4\n');
 });
 
-test('node: stdin, child_process and ESM syntax', async () => {
+test('node: stdin, child_process and ESM syntax', { skip: NODE_ONLY }, async () => {
   assert.equal(await out(`node -e 'process.stdin.on("data", (d) => process.stdout.write("got:" + d))'`, 'hello\n'), 'got:hello\n');
   const rl = `const rl = require("readline").createInterface({ input: process.stdin }); let n = 0;
     rl.on("line", (l) => (n += Number(l))); rl.on("close", () => console.log("sum", n))`;

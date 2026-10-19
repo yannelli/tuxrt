@@ -31,7 +31,10 @@ function sandboxCrypto(rt: NodeRuntime) {
 /** fetch through the host, tied to the command's signal and counted as a pending handle. */
 function sandboxFetch(rt: NodeRuntime) {
   return (input: unknown, init?: RequestInit) => {
-    const signal = init?.signal ? AbortSignal.any([init.signal, rt.ctx.signal]) : rt.ctx.signal;
+    const job = new AbortController();
+    if (rt.ctx.signal.aborted) job.abort(rt.ctx.signal.reason);
+    else rt.ctx.signal.addEventListener('abort', () => job.abort(rt.ctx.signal.reason), { once: true });
+    const signal = init?.signal ? AbortSignal.any([init.signal, job.signal]) : job.signal;
     const response = fetch(input as string, { ...init, signal }).then((res) => {
       for (const name of BODY_READERS) {
         const read = (res as unknown as Record<string, Fn>)[name];

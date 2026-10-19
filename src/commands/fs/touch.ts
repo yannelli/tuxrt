@@ -1,6 +1,7 @@
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, parseArgs } from '../util.ts';
 import { err, msgOf, parseDate, q, usage } from './common.ts';
+import { utf8Decode, utf8Encode } from '../../vfs/bytes.ts';
 
 /** touch -t [[CC]YY]MMDDhhmm[.ss] */
 function parseStamp(stamp: string): number | null {
@@ -100,10 +101,10 @@ function truncate(ctx: Ctx): number {
         if (opts.c) continue;
         ctx.vfs.writeFile(path, '');
       }
-      const data = Buffer.from(ctx.vfs.readFile(path));
+      const data = utf8Encode(ctx.vfs.readFile(path));
       const size = resize(spec.op, ref ?? data.length, spec.bytes);
       if (size === data.length) continue;
-      const next = size < data.length ? data.subarray(0, size).toString() : data.toString() + '\0'.repeat(size - data.length);
+      const next = size < data.length ? utf8Decode(data.subarray(0, size)) : utf8Decode(data) + '\0'.repeat(size - data.length);
       ctx.vfs.writeFile(path, next);
     } catch (e) {
       status = err(ctx, `cannot open ${q(op)} for writing: ${msgOf(e)}`);

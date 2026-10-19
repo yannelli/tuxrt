@@ -1,4 +1,3 @@
-import { posix } from 'node:path';
 import type { Dep, Node, Program } from './ast.ts';
 import { values } from './eval.ts';
 import { parseJson } from './json.ts';
@@ -6,6 +5,7 @@ import { parseModule } from './parser.ts';
 import type { Env, FnLink } from './registry.ts';
 import { defineFn, setVar } from './scope.ts';
 import { isObj, type Obj, type Value } from './value.ts';
+import { basename, dirname, normalize } from '../../../../vfs/path.ts';
 
 export interface ModuleHost {
   /** File text, or null when the path is missing or not a regular file. */
@@ -64,7 +64,7 @@ export class Modules {
       }
       const mod = this.load(found.path, found.text);
       if (dep.alias === null) {
-        env = this.link(mod.prog.deps, env, posix.dirname(found.path), top);
+        env = this.link(mod.prog.deps, env, dirname(found.path), top);
         for (const d of mod.prog.defs) {
           env = defineFn(d, env);
           if (top) this.keys.push(`${d.name}/${d.params.length}`);
@@ -106,7 +106,7 @@ export class Modules {
     if (this.loading.has(path)) throw new ModuleError(`circular module import: ${path}`);
     this.loading.add(path);
     const prog = this.parse(path, text);
-    let env = this.link(prog.deps, this.base, posix.dirname(path), false);
+    let env = this.link(prog.deps, this.base, dirname(path), false);
     const exported: FnLink[] = [];
     for (const d of prog.defs) {
       env = defineFn(d, env);
@@ -139,10 +139,10 @@ export class Modules {
     const local = typeof search === 'string' ? [search] : Array.isArray(search) ? search.filter((s) => typeof s === 'string') : [];
     const dirs = [...(local as string[]).map((d) => this.expand(d, from)), ...this.host.libraryPaths.map((d) => this.expand(d, this.host.cwd))];
     const ext = dep.data ? '.json' : '.jq';
-    const candidates = [`${dep.path}${ext}`, `${dep.path}/${posix.basename(dep.path)}${ext}`];
+    const candidates = [`${dep.path}${ext}`, `${dep.path}/${basename(dep.path)}${ext}`];
     for (const dir of dep.path.startsWith('/') ? ['/'] : dirs) {
       for (const c of candidates) {
-        const path = posix.resolve(dir, c);
+        const path = normalize(c, dir);
         const text = this.host.read(path);
         if (text !== null) return { path, text };
       }
@@ -153,6 +153,6 @@ export class Modules {
   private expand(dir: string, from: string): string {
     if (dir === '~' || dir.startsWith('~/')) return this.host.home + dir.slice(1);
     if (dir === '$ORIGIN' || dir.startsWith('$ORIGIN/')) return ORIGIN + dir.slice(7);
-    return posix.resolve(from, dir);
+    return normalize(dir, from);
   }
 }

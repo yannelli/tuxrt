@@ -1,16 +1,16 @@
-import { posix } from 'node:path';
 import type { Node } from './ast.ts';
 import { check } from './check.ts';
-import { HELP, HINT, parseCli, type Options } from './cli.ts';
+import { CliError, HELP, HINT, parseCli, type Options } from './cli.ts';
 import { DEFAULT_COLORS, dump, quote, tojson, type DumpOpts } from './dump.ts';
 import { ev } from './eval.ts';
-import { Inputs, type Source } from './inputs.ts';
+import { Inputs, PENDING, UnbufferedInput, type Source } from './inputs.ts';
 import { ParseError, parseJson } from './json.ts';
 import { DEFAULT_LIBRARY_PATHS, ModuleError, Modules } from './modules.ts';
 import { parseProgram } from './parser.ts';
 import { builtinKeys, rootEnv } from './prelude.ts';
 import { Halt, type Runtime } from './registry.ts';
 import { CompileError, JqError, truthy, type Value } from './value.ts';
+import { normalize } from '../../../../vfs/path.ts';
 
 /** Everything a jq run needs from the shell, captured so it can run on a worker thread. */
 export interface Job {
@@ -27,8 +27,12 @@ export interface JobIO {
   err(s: string): void;
   /** Throws an Error whose message is the OS-style reason. */
   readFile(path: string): string;
-  readStdin(): string | null;
+  /** The next stdin chunk; null at end of input, undefined when none is buffered yet (see Pause). */
+  readStdin(): string | null | undefined;
 }
+
+/** Why runJob paused: it needs another stdin chunk, all of stdin before it starts, or it just wrote an output. */
+export type Pause = 'more' | 'all' | 'out';
 
 export class Exit {
   readonly code: number;
@@ -36,6 +40,13 @@ export class Exit {
   constructor(code: number) {
     this.code = code;
   }
+}
+
+/** Exit status for an exception that escaped runJob, reported the way jq would. */
+export function failure(e: unknown, err: (s: string) => void): number {
+  if (e instanceof Exit) return e.code;
+  if (e instanceof CliError) return err(`jq: ${e.message}\n${HINT}`), 2;
+  return err(`jq: error: ${e instanceof Error ? e.message : String(e)}\n`), 5;
 }
 
 function compileError(io: JobIO, src: string, errs: CompileError[]): number {
@@ -60,8 +71,8 @@ function dumpOpts(job: Job, o: Options): DumpOpts {
   return { indent, sort: f.has('sort-keys'), ascii: f.has('ascii-output'), colors: f.has('color-output') || (tty && !f.has('monochrome-output')) ? colors : null };
 }
 
-export function runJob(job: Job, io: JobIO): number {
-  const abs = (p: string) => posix.resolve(job.cwd, p);
+export function* runJob(job: Job, io: JobIO): Generator<Pause, number> {
+  const abs = (p: string) => normalize(p, job.cwd);
   const readSource = (file: string): string => {
     try {
       return io.readFile(abs(file));
@@ -83,7 +94,11 @@ export function runJob(job: Job, io: JobIO): number {
   const vars = globals(job, o, readSource);
   let mods: Modules | null = null;
   const rt: Runtime = {
-    input: () => inputs.next(),
+    input: () => {
+      const v = inputs.next();
+      if (v === PENDING) throw new UnbufferedInput();
+      return v;
+    },
     filename: () => inputs.filename,
     line: () => inputs.line,
     stderr: io.err,
@@ -115,7 +130,9 @@ export function runJob(job: Job, io: JobIO): number {
   }
   const failed = { value: false };
   const inputs = new Inputs(sources(o, ast, abs, io, failed), f.has('raw-input'), f.has('slurp'), f.has('stream'));
-  return evaluate(ast, env, inputs, o, dumpOpts(job, o), io, failed.value);
+  // `input`, `inputs` and --slurp read stdin from inside the evaluator, where pausing is impossible.
+  if (f.has('slurp') || usesInput(ast)) yield 'all';
+  return yield* evaluate(ast, env, inputs, o, dumpOpts(job, o), io, failed.value);
 }
 
 function globals(job: Job, o: Options, readSource: (f: string) => string): [string, Value][] {
@@ -156,7 +173,7 @@ function sources(o: Options, ast: Node, abs: (p: string) => string, io: JobIO, f
   return list;
 }
 
-function evaluate(ast: Node, env: ReturnType<typeof rootEnv>, inputs: Inputs, o: Options, opts: DumpOpts, io: JobIO, failed: boolean): number {
+function* evaluate(ast: Node, env: ReturnType<typeof rootEnv>, inputs: Inputs, o: Options, opts: DumpOpts, io: JobIO, failed: boolean): Generator<Pause, number> {
   const f = o.flags;
   const raw = f.has('raw-output') || f.has('join-output') || f.has('raw-output0');
   const end = f.has('join-output') ? '' : f.has('raw-output0') ? '\0' : '\n';
@@ -167,12 +184,13 @@ function evaluate(ast: Node, env: ReturnType<typeof rootEnv>, inputs: Inputs, o:
   };
   let ret = 0;
   let lastResult = -1;
-  const run = (v: Value) => {
+  function* run(v: Value): Generator<Pause> {
     let last: Value | undefined;
     try {
       for (const [x] of ev(ast, env, v, null)) {
         write(x);
         last = x;
+        yield 'out';
       }
       ret = last === undefined ? -4 : truthy(last) ? 0 : -1;
       if (ret !== -4) lastResult = ret === 0 ? 1 : 0;
@@ -184,10 +202,16 @@ function evaluate(ast: Node, env: ReturnType<typeof rootEnv>, inputs: Inputs, o:
       io.err(`jq: error (at ${inputs.loc})${msg}\n`);
       ret = 5;
     }
+  }
+  const next = function* (): Generator<Pause, Value | undefined> {
+    for (let v = inputs.next(); ; v = inputs.next()) {
+      if (v !== PENDING) return v;
+      yield 'more';
+    }
   };
   try {
-    if (f.has('null-input')) run(null);
-    else for (let v = inputs.next(); v !== undefined; v = inputs.next()) run(v);
+    if (f.has('null-input')) yield* run(null);
+    else for (let v = yield* next(); v !== undefined; v = yield* next()) yield* run(v);
   } catch (e) {
     if (e instanceof Halt) return e.code;
     if (!(e instanceof ParseError)) throw e;

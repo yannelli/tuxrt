@@ -1,6 +1,7 @@
 import { readAll } from '../../shell/io.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, fail, lines, parseArgs, readInput } from '../util.ts';
+import { platform } from '../../platform/index.ts';
 
 const SMALL_PRIMES = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
 
@@ -86,7 +87,7 @@ async function shuf(ctx: Ctx): Promise<number> {
     if (!items.length) return count === 0 ? 0 : fail(ctx, 'no lines to repeat');
     for (let i = 0; i < count && !ctx.signal.aborted; i++) {
       ctx.stdout.write(`${items[Math.floor(Math.random() * items.length)]}${end}`);
-      if (i % 256 === 255) await new Promise((r) => setImmediate(r));
+      if (i % 256 === 255) await platform.yield();
     }
     return 0;
   }

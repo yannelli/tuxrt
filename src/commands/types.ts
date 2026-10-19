@@ -1,6 +1,7 @@
 import type { Reader, Writer } from '../shell/io.ts';
 import type { Shell } from '../shell/shell.ts';
 import type { VFS } from '../vfs/vfs.ts';
+import type { AbortSignal } from '../platform/abort.ts';
 
 export interface Ctx {
   name: string;

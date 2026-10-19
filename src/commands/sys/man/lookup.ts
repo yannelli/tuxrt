@@ -1,5 +1,5 @@
-import { gunzipSync } from 'node:zlib';
-import { toBytes } from '../../../vfs/bytes.ts';
+import { toBytes, utf8Decode } from '../../../vfs/bytes.ts';
+import { gunzip } from '../../extra/archive/gzfmt.ts';
 import type { Ctx } from '../../types.ts';
 import { builtinDocs } from './pages/builtins.ts';
 import { allPages } from './pages/index.ts';
@@ -66,7 +66,7 @@ export function readPage(ctx: Ctx, path: string, root = path.replace(/\/[^/]+\/[
   let text = raw;
   if (raw.startsWith('\x1f\x8b')) {
     try {
-      text = gunzipSync(toBytes(raw)).toString('utf8');
+      text = utf8Decode(gunzip(toBytes(raw)));
     } catch {
       text = raw;
     }

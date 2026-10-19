@@ -3,6 +3,7 @@ import { errMessage } from '../../vfs/errors.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { abs, command, parseArgs } from '../util.ts';
 import { readText, toBytes } from './stream.ts';
+import { latin1 } from '../../vfs/bytes.ts';
 
 function printable(b: number): string {
   if (b >= 128) return `M-${printable(b - 128)}`;
@@ -21,7 +22,7 @@ async function cmp(ctx: Ctx): Promise<number> {
     return 2;
   }
   const names = [operands[0], operands[1] ?? '-'];
-  const data: Buffer[] = [];
+  const data: Uint8Array[] = [];
   for (const f of names) {
     try {
       data.push(toBytes(f === '-' ? await readAll(ctx.stdin) : ctx.vfs.readFile(abs(ctx, f))));
@@ -79,7 +80,7 @@ async function strings(ctx: Ctx): Promise<number> {
     }
     const bytes = toBytes(text);
     let out = '';
-    for (const m of bytes.toString('latin1').matchAll(new RegExp(`[\\t\\x20-\\x7e]{${min},}`, 'g'))) {
+    for (const m of latin1(bytes).matchAll(new RegExp(`[\\t\\x20-\\x7e]{${min},}`, 'g'))) {
       const offset = radix ? `${m.index.toString(radix).padStart(7)} ` : '';
       out += `${opts.f ? `${f}: ` : ''}${offset}${m[0]}\n`;
     }

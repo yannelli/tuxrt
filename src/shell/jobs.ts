@@ -3,6 +3,7 @@ import { ExitSignal, Interrupt } from './control.ts';
 import { EMPTY, type IO } from './io.ts';
 import { exec } from './interpreter.ts';
 import type { Job, Shell } from './shell.ts';
+import { AbortController } from '../platform/abort.ts';
 
 /** Starts `node` as a background job (`cmd &`). Returns immediately with status 0. */
 export function startJob(node: Node, shell: Shell, io: IO): number {

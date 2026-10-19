@@ -1,5 +1,7 @@
-import { lookup, Resolver } from 'node:dns/promises';
-import { connect, isIP } from 'node:net';
+import type { AbortSignal } from '../../platform/abort.ts';
+import { currentDns, DnsFailure, isIP } from '../../platform/dns.ts';
+import { platform, type Probe } from '../../platform/index.ts';
+import { http, requestSignal } from '../extra/net/argv.ts';
 import type { Ctx } from '../types.ts';
 import { hostname } from './info.ts';
 
@@ -34,10 +36,10 @@ export async function resolveHost(ctx: Ctx, host: string, family: Family): Promi
   const local = localLookup(ctx, host, family);
   if (local) return local;
   try {
-    return (await lookup(host, { family })).address;
+    return (await currentDns().lookup(host, family))[0];
   } catch (e) {
-    const code = (e as NodeJS.ErrnoException).code;
-    throw new ResolveError(code === 'ENOTFOUND' || code === 'ENODATA' ? 'Name or service not known' : 'Temporary failure in name resolution');
+    const missing = e instanceof DnsFailure && e.message === 'NXDOMAIN';
+    throw new ResolveError(missing ? 'Name or service not known' : 'Temporary failure in name resolution');
   }
 }
 
@@ -51,43 +53,39 @@ export async function reverseName(ctx: Ctx, address: string): Promise<string> {
   if (local) return local[1][0];
   if (isLocal(address)) return address;
   try {
-    return (await new Resolver({ timeout: 1500, tries: 1 }).reverse(address))[0] ?? address;
+    return (await currentDns().query(address, 'PTR'))[0]?.data.replace(/\.$/, '') ?? address;
   } catch {
     return address;
   }
 }
 
-type Attempt = number | 'timeout' | 'error';
+/** Without sockets, an HTTP HEAD to the address stands in for the handshake; any response counts as a reply. */
+async function httpOnce(address: string, ms: number, signal: AbortSignal): Promise<Probe> {
+  if (ms <= 0 || signal.aborted) return 'timeout';
+  const start = platform.now();
+  const req = requestSignal(signal, ms);
+  try {
+    await http(`http://${isIP(address) === 6 ? `[${address}]` : address}/`, { method: 'HEAD', redirect: 'manual', signal: req.signal });
+    return platform.now() - start;
+  } catch {
+    return req.timedOut() || signal.aborted ? 'timeout' : 'error';
+  } finally {
+    req.release();
+  }
+}
 
-function connectOnce(host: string, port: number, ms: number, signal: AbortSignal): Promise<Attempt> {
-  return new Promise((resolve) => {
-    if (ms <= 0 || signal.aborted) return resolve('timeout');
-    const start = performance.now();
-    const socket = connect({ host, port });
-    let settled = false;
-    const done = (r: Attempt) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      signal.removeEventListener('abort', abort);
-      socket.destroy();
-      resolve(r);
-    };
-    const abort = () => done('timeout');
-    const timer = setTimeout(abort, ms);
-    signal.addEventListener('abort', abort, { once: true });
-    socket.on('connect', () => done(performance.now() - start));
-    socket.on('error', (e: NodeJS.ErrnoException) => done(e.code === 'ECONNREFUSED' ? performance.now() - start : 'error'));
-  });
+function connectOnce(address: string, port: number, ms: number, signal: AbortSignal): Promise<Probe> {
+  if (ms <= 0 || signal.aborted) return Promise.resolve('timeout');
+  return platform.connect ? platform.connect(address, port, ms, signal) : httpOnce(address, ms, signal);
 }
 
 /** One echo request, timed as a TCP handshake (443, then 80) since raw ICMP sockets are unavailable. */
 export async function probe(address: string, timeoutMs: number, signal: AbortSignal): Promise<number | null> {
   if (isLocal(address)) return 0.015 + Math.random() * 0.04;
-  const deadline = performance.now() + timeoutMs;
-  for (const port of [443, 80]) {
+  const deadline = platform.now() + timeoutMs;
+  for (const port of platform.connect ? [443, 80] : [80]) {
     // A refused connection still proves the host answered, so it counts as a reply.
-    const r = await connectOnce(address, port, deadline - performance.now(), signal);
+    const r = await connectOnce(address, port, deadline - platform.now(), signal);
     if (typeof r === 'number') return r;
     if (r === 'timeout') return null;
   }

@@ -2,6 +2,7 @@ import type { CommandTable, Ctx } from '../types.ts';
 import { abs, command, fail, fsFail } from '../util.ts';
 import { getopt } from './args.ts';
 import { readText, toBytes } from './stream.ts';
+import { hexBytes, latin1, utf8Decode } from '../../vfs/bytes.ts';
 
 interface OdType {
   kind: string;
@@ -34,7 +35,7 @@ function parseType(spec: string): OdType[] | null {
   return consumed === spec.length && out.length ? out : null;
 }
 
-function field(t: OdType, bytes: Buffer, i: number): string {
+function field(t: OdType, bytes: Uint8Array, i: number): string {
   const k = t.kind[0];
   if (k === 'c') {
     const b = bytes[i];
@@ -84,11 +85,11 @@ async function od(ctx: Ctx): Promise<number> {
   if (opts.N !== undefined) bytes = bytes.subarray(0, Number(opts.N));
   const per = opts.w === undefined ? 16 : Number(opts.w) || 32;
   let out = '';
-  let prev: Buffer | null = null;
+  let prev: Uint8Array | null = null;
   let starred = false;
   for (let off = 0; off < bytes.length; off += per) {
     const row = bytes.subarray(off, off + per);
-    if (!opts.v && prev && row.length === per && row.equals(prev)) {
+    if (!opts.v && prev && row.length === per && row.every((b, i) => b === prev![i])) {
       if (!starred) out += '*\n';
       starred = true;
       continue;
@@ -98,7 +99,7 @@ async function od(ctx: Ctx): Promise<number> {
     types.forEach((t, n) => {
       let line = n === 0 ? addr(skip + off) : ' '.repeat(addr(0).length);
       for (let i = 0; i < row.length; i += t.size) line += ` ${field(t, row, i)}`;
-      if (t.kind.endsWith('z')) line += `${' '.repeat(Math.max(0, (Math.ceil(per / t.size) - Math.ceil(row.length / t.size)) * (t.width + 1)))}  >${row.toString('latin1').replace(/[^\x20-\x7e]/g, '.')}<`;
+      if (t.kind.endsWith('z')) line += `${' '.repeat(Math.max(0, (Math.ceil(per / t.size) - Math.ceil(row.length / t.size)) * (t.width + 1)))}  >${latin1(row).replace(/[^\x20-\x7e]/g, '.')}<`;
       out += `${line}\n`;
     });
   }
@@ -107,12 +108,8 @@ async function od(ctx: Ctx): Promise<number> {
   return status;
 }
 
-function decode(buf: Buffer): string {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
-  } catch {
-    return buf.toString('latin1');
-  }
+function decode(buf: Uint8Array): string {
+  return utf8Decode(buf, true) ?? latin1(buf);
 }
 
 async function xxd(ctx: Ctx): Promise<number> {
@@ -127,7 +124,7 @@ async function xxd(ctx: Ctx): Promise<number> {
   let output: string;
   if (opts.r) {
     const hex = opts.p ? text.replace(/[^0-9a-fA-F]/g, '') : text.split('\n').map((l) => (/^[0-9a-fA-F]+:\s?(.*?)(?: {2}.*)?$/.exec(l)?.[1] ?? '').replace(/[^0-9a-fA-F]/g, '')).join('');
-    output = decode(Buffer.from(hex.length % 2 ? hex.slice(0, -1) : hex, 'hex'));
+    output = decode(hexBytes(hex.length % 2 ? hex.slice(0, -1) : hex));
   } else {
     const seek = Number(opts.s ?? 0);
     let bytes = toBytes(text).subarray(seek);

@@ -1,7 +1,6 @@
 import { parentPort, type MessagePort } from 'node:worker_threads';
-import { CliError, HINT } from './cli.ts';
-import { SyncCaller, type Response, type WorkerMessage } from './rpc.ts';
-import { Exit, runJob, type Job, type JobIO } from './run.ts';
+import { SyncCaller, type Response, type WorkerMessage } from './jq-rpc.ts';
+import { failure, runJob, type Job, type JobIO } from '../../commands/extra/toys/jq/run.ts';
 
 interface Start {
   job: Job;
@@ -51,11 +50,13 @@ parentPort!.on('message', ({ job, port, flag }: Start) => {
   };
   let code: number;
   try {
-    code = runJob(job, io);
+    // Reads block on this thread, so the pauses that let a single-threaded host refill stdin are skipped.
+    const run = runJob(job, io);
+    let step = run.next();
+    while (!step.done) step = run.next();
+    code = step.value;
   } catch (e) {
-    if (e instanceof Exit) code = e.code;
-    else if (e instanceof CliError) code = (io.err(`jq: ${e.message}\n${HINT}`), 2);
-    else code = (io.err(`jq: error: ${e instanceof Error ? e.message : String(e)}\n`), 5);
+    code = failure(e, io.err);
   }
   flush();
   send({ t: 'done', code });

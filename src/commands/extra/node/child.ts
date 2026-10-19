@@ -10,6 +10,7 @@ import { dispatch } from '../../../shell/simple.ts';
 import { normalize } from '../../../vfs/path.ts';
 import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
 import type { NodeRuntime } from './runtime.ts';
+import { AbortController } from '../../../platform/abort.ts';
 
 interface Opts {
   cwd?: string;
@@ -109,7 +110,7 @@ export function createChildProcess(rt: NodeRuntime): Record<string, unknown> {
   function collect(command: string | string[], shown: string, opts: Opts, callback?: Callback) {
     const out = { 1: '', 2: '' };
     const cp = start(command, opts, (fd, s) => (out[fd] += s));
-    const fmt = (s: string) => (opts.encoding === 'buffer' || opts.encoding === null ? toBytes(s) : s);
+    const fmt = (s: string) => (opts.encoding === 'buffer' || opts.encoding === null ? Buffer.from(toBytes(s)) : s);
     cp.on('close', (code: number | null) => {
       if (!callback) return;
       const err =

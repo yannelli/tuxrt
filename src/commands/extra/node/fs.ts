@@ -43,8 +43,8 @@ export function createFsSync(rt: NodeRuntime) {
   }
 
   function decode(text: string, enc: string | null): string | Buffer {
-    if (!enc || enc === 'buffer') return toBytes(text);
-    return isUtf8Name(enc) ? text : toBytes(text).toString(enc as BufferEncoding);
+    if (!enc || enc === 'buffer') return Buffer.from(toBytes(text));
+    return isUtf8Name(enc) ? text : Buffer.from(toBytes(text)).toString(enc as BufferEncoding);
   }
 
   function encode(data: unknown, enc: string | null): string {
@@ -249,7 +249,7 @@ export function createFsSync(rt: NodeRuntime) {
     utimesSync: (p: unknown, _atime: unknown, mtime: unknown) => op('utime', p, (a) => vfs.touch(a, timeOf(mtime))),
     truncateSync: (p: unknown, len = 0) =>
       op('open', p, (a) => {
-        const bytes = toBytes(vfs.readFile(a));
+        const bytes = Buffer.from(toBytes(vfs.readFile(a)));
         const out = Buffer.alloc(len);
         bytes.copy(out, 0, 0, len);
         vfs.writeFile(a, fromBytes(out));

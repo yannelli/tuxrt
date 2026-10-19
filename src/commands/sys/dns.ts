@@ -1,8 +1,9 @@
-import { isIP } from 'node:net';
+import { isIP } from '../../platform/dns.ts';
+import { platform } from '../../platform/index.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, fail, parseArgs } from '../util.ts';
 import { strftime } from './datefmt.ts';
-import { arpa, DnsFailure, follow, query, RCODES, resolver, STUB, TYPES, type Answer } from './dnsquery.ts';
+import { arpa, DnsFailure, follow, query, RCODES, STUB, TYPES, type Answer } from './dnsquery.ts';
 
 const HOST_FORMAT: Record<string, string> = {
   A: 'has address', AAAA: 'has IPv6 address', MX: 'mail is handled by', TXT: 'descriptive text', NS: 'name server',
@@ -18,21 +19,20 @@ async function host(ctx: Ctx): Promise<number> {
   if (!name) return (ctx.stderr.write('Usage: host [-aCdilrTvVw] [-c class] [-N ndots] [-t type] [-W time]\n            [-R number] [-m flag] [-p port] hostname [server]\n'), 1);
   const want = typeof opts.t === 'string' ? opts.t.toUpperCase() : opts.a ? 'ANY' : null;
   if (want && want !== 'ANY' && !TYPES.includes(want)) return fail(ctx, `invalid type: ${opts.t}`);
-  const r = await resolver(server);
   if (server) ctx.stdout.write(`Using domain server:\nName: ${server}\nAddress: ${server}#53\nAliases: \n\n`);
   const line = (a: Answer) => ctx.stdout.write(`${a.name} ${HOST_FORMAT[a.type]} ${a.data}\n`);
   try {
     if (isIP(name)) {
-      const ptr = await query(ctx, r, name, 'PTR', !server);
+      const ptr = await query(ctx, server, name, 'PTR', !server);
       if (!ptr.length) return (ctx.stdout.write(`Host ${arpa(name)} not found: 3(NXDOMAIN)\n`), 1);
       ptr.forEach(line);
       return 0;
     }
-    const { aliases, target } = await follow(ctx, r, name, !server);
+    const { aliases, target } = await follow(ctx, server, name, !server);
     aliases.forEach(line);
     const types = want === 'ANY' ? ['A', 'AAAA', 'MX', 'TXT', 'NS'] : want ? [want] : ['A', 'AAAA', 'MX'];
     for (const type of types.filter((t) => t !== 'CNAME' || !aliases.length)) {
-      const answers = await query(ctx, r, target, type, !server);
+      const answers = await query(ctx, server, target, type, !server);
       answers.forEach(line);
       if (want && want !== 'ANY' && !answers.length && !aliases.length) ctx.stdout.write(`${target} has no ${type} record\n`);
     }
@@ -49,18 +49,17 @@ async function nslookup(ctx: Ctx): Promise<number> {
   const [name, server] = ctx.args.filter((a) => !a.startsWith('-'));
   if (!name) return (ctx.stderr.write('Usage: nslookup [-opt ...] host [server]\n'), 1);
   const type = opt ? opt.split('=')[1].toUpperCase() : null;
-  const r = await resolver(server);
   const shown = server ?? STUB;
   ctx.stdout.write(`Server:\t\t${shown}\nAddress:\t${shown}#53\n\n`);
   try {
     if (isIP(name) || type === 'PTR') {
-      for (const a of await query(ctx, r, name, 'PTR', !server)) ctx.stdout.write(`${a.name}\t${NS_FORMAT.PTR} = ${a.data}\n`);
+      for (const a of await query(ctx, server, name, 'PTR', !server)) ctx.stdout.write(`${a.name}\t${NS_FORMAT.PTR} = ${a.data}\n`);
       ctx.stdout.write('\nAuthoritative answers can be found from:\n\n');
       return 0;
     }
-    const { aliases, target } = await follow(ctx, r, name, !server);
+    const { aliases, target } = await follow(ctx, server, name, !server);
     const types = type ? [type] : ['A', 'AAAA'];
-    const answers = (await Promise.all(types.filter((t) => t !== 'CNAME').map((t) => query(ctx, r, target, t, !server)))).flat();
+    const answers = (await Promise.all(types.filter((t) => t !== 'CNAME').map((t) => query(ctx, server, target, t, !server)))).flat();
     if (!answers.length && !aliases.length) return (ctx.stdout.write(`*** Can't find ${name}: No answer\n\n`), 0);
     ctx.stdout.write('Non-authoritative answer:\n');
     for (const a of [...aliases, ...answers]) {
@@ -103,15 +102,14 @@ async function dig(ctx: Ctx): Promise<number> {
   const shown = server ?? STUB;
   const out = (s: string) => ctx.stdout.write(s);
   if (show.comments && !show.short) out(`\n; <<>> DiG 9.18.28-0ubuntu0.24.04.1-Ubuntu <<>> ${ctx.args.join(' ')}\n;; global options: +cmd\n`);
-  const start = performance.now();
-  const r = await resolver(server);
+  const start = platform.now();
   let answers: Answer[] = [];
   let status = 'NOERROR';
   try {
-    if (reverse) answers = await query(ctx, r, reverse, 'PTR', !server);
+    if (reverse) answers = await query(ctx, server, reverse, 'PTR', !server);
     else {
-      const { aliases, target } = type === 'CNAME' ? { aliases: [], target: qname } : await follow(ctx, r, qname, !server);
-      answers = [...aliases, ...(await query(ctx, r, target, type, !server))];
+      const { aliases, target } = type === 'CNAME' ? { aliases: [], target: qname } : await follow(ctx, server, qname, !server);
+      answers = [...aliases, ...(await query(ctx, server, target, type, !server))];
     }
   } catch (e) {
     if (!(e instanceof DnsFailure)) throw e;
@@ -119,7 +117,7 @@ async function dig(ctx: Ctx): Promise<number> {
     status = e.message;
   }
   if (show.short) return (answers.forEach((a) => out(`${a.data}\n`)), 0);
-  const elapsed = Math.round(performance.now() - start);
+  const elapsed = Math.round(platform.now() - start);
   if (show.comments) {
     out(`;; Got answer:\n;; ->>HEADER<<- opcode: QUERY, status: ${status}, id: ${Math.floor(Math.random() * 65536)}\n`);
     out(`;; flags: qr rd ra; QUERY: 1, ANSWER: ${answers.length}, AUTHORITY: 0, ADDITIONAL: 1\n\n;; OPT PSEUDOSECTION:\n; EDNS: version: 0, flags:; udp: 65494\n`);

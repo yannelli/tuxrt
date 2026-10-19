@@ -1,11 +1,14 @@
 import { readAll } from '../../../shell/io.ts';
 import { FsError } from '../../../vfs/errors.ts';
 import type { Ctx } from '../../types.ts';
-import { fromBytes, toBytes } from '../../../vfs/bytes.ts';
+import { base64Encode, concatBytes, fromBytes, toBytes, utf8Encode } from '../../../vfs/bytes.ts';
 import {
-  abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, parseUrl, requestSignal, scanArgs, withScheme, type Opt,
+  abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, http, parseUrl, requestSignal, scanArgs, withScheme, type Opt,
 } from './argv.ts';
 import { CURL_HELP, headerBlock, headerLines, progressMeter, writeOut, type Outcome } from './curlfmt.ts';
+import { type HttpResponse, NetError } from '../../../platform/http.ts';
+import { platform } from '../../../platform/index.ts';
+import { URL, type Url } from '../../../platform/url.ts';
 
 const SPEC = {
   flags: 'sSOLIifkvh',
@@ -81,15 +84,15 @@ async function postData(ctx: Ctx, o: CurlOpts): Promise<Uint8Array<ArrayBuffer> 
   return new Uint8Array(toBytes(parts.join('&')));
 }
 
-function credentials(o: CurlOpts, url: URL): string | null {
+function credentials(o: CurlOpts, url: Url): string | null {
   if (o.user !== null || !url.username) return o.user;
   return `${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`;
 }
 
-function requestHeaders(o: CurlOpts, url: URL, body: Uint8Array | undefined): [string, string][] {
+function requestHeaders(o: CurlOpts, url: Url, body: Uint8Array | undefined): [string, string][] {
   const list: [string, string][] = [['Host', url.host], ['User-Agent', o.agent], ['Accept', '*/*']];
   const user = credentials(o, url);
-  if (user !== null) list.push(['Authorization', `Basic ${Buffer.from(user).toString('base64')}`]);
+  if (user !== null) list.push(['Authorization', `Basic ${base64Encode(utf8Encode(user))}`]);
   if (body) list.push(['Content-Length', String(body.length)], ['Content-Type', 'application/x-www-form-urlencoded']);
   for (const h of o.headers) {
     const m = /^([^:;]+)([:;])\s*(.*)$/s.exec(h);
@@ -102,21 +105,21 @@ function requestHeaders(o: CurlOpts, url: URL, body: Uint8Array | undefined): [s
   return list;
 }
 
-function failure(e: unknown, url: URL, ms: number, timedOut: boolean): [number, string] {
+function failure(e: unknown, url: Url, ms: number, timedOut: boolean): [number, string] {
   const where = `${url.hostname} port ${defaultPort(url)} after ${ms} ms`;
   const code = causeCode(e);
   if (timedOut) return [28, `Operation timed out after ${ms} milliseconds with 0 bytes received`];
   if (DNS_ERRORS.has(code)) return [6, `Could not resolve host: ${url.hostname}`];
   if (code === 'UND_ERR_CONNECT_TIMEOUT' || code === 'ETIMEDOUT') return [28, `Failed to connect to ${where}: Timeout was reached`];
   if (code === 'ECONNRESET' || code === 'UND_ERR_SOCKET') return [56, 'Recv failure: Connection reset by peer'];
-  if (/CERT|SSL|TLS/.test(code)) return [60, `SSL certificate problem: ${(e as { cause: Error }).cause.message}`];
-  if (!(e as { cause?: unknown }).cause) return [43, 'A libcurl function was given a bad argument'];
+  if (/CERT|SSL|TLS/.test(code)) return [60, `SSL certificate problem: ${(e as Error).message}`];
+  if (!(e instanceof NetError)) return [43, 'A libcurl function was given a bad argument'];
   return [7, `Failed to connect to ${where}: Couldn't connect to server`];
 }
 
 async function transfer(ctx: Ctx, o: CurlOpts, raw: string, output: string | null | undefined, body?: Uint8Array<ArrayBuffer>): Promise<number> {
-  const start = performance.now();
-  const elapsed = () => Math.round(performance.now() - start);
+  const start = platform.now();
+  const elapsed = () => Math.round(platform.now() - start);
   const loud = !o.flags.has('s') || o.flags.has('S');
   const outcome: Outcome = { url: raw, status: 0, contentType: '', redirectUrl: '', size: 0, ms: 0 };
   const finish = (code: number, msg?: string) => {
@@ -142,13 +145,13 @@ async function transfer(ctx: Ctx, o: CurlOpts, raw: string, output: string | nul
   const sent = headers.filter(([n]) => n !== 'Host' && n !== 'Content-Length');
   // undici decompresses transparently, so ask for identity to keep sizes and bytes as sent.
   if (!o.flags.has('compressed') && !sent.some(([n]) => n.toLowerCase() === 'accept-encoding')) sent.push(['Accept-Encoding', 'identity']);
-  const target = new URL(url);
+  const target = new URL(url.href);
   target.username = target.password = '';
   const req = requestSignal(ctx.signal, o.maxTime * 1000);
-  let res: Response;
+  let res: HttpResponse;
   let data = new Uint8Array();
   try {
-    res = await fetch(target, { method, headers: sent, body, redirect: follow ? 'follow' : 'manual', signal: req.signal });
+    res = await http(target.href, { method, headers: sent, body, redirect: follow ? 'follow' : 'manual', signal: req.signal });
     const redirect = !follow && res.status >= 300 && res.status < 400;
     if (method !== 'HEAD' && !redirect) data = new Uint8Array(await res.arrayBuffer());
   } catch (e) {
@@ -168,7 +171,7 @@ async function transfer(ctx: Ctx, o: CurlOpts, raw: string, output: string | nul
   if (o.flags.has('f') && res.status >= 400) return finish(22, `The requested URL returned error: ${res.status}`);
 
   const head = o.flags.has('i') || o.flags.has('I') ? headerBlock(res) : '';
-  const text = fromBytes(Buffer.concat([Buffer.from(head), data]));
+  const text = fromBytes(concatBytes([utf8Encode(head), data]));
   if (file === undefined || file === '-') {
     ctx.stdout.write(text);
     return finish(0);

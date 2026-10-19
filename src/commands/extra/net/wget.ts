@@ -1,13 +1,16 @@
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
 import { FsError } from '../../../vfs/errors.ts';
 import type { Ctx } from '../../types.ts';
 import { fromBytes } from '../../../vfs/bytes.ts';
 import {
-  abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, parseUrl, requestSignal, scanArgs, untilAbort, withScheme,
+  abortCode, ArgError, causeCode, defaultPort, DNS_ERRORS, http, parseUrl, requestSignal, scanArgs, untilAbort, withScheme,
 } from './argv.ts';
 import { reason } from './curlfmt.ts';
 import { human, progressBar, retrRate, stamp, WGET_HELP, WGET_TRY } from './wgetfmt.ts';
+import { type HttpResponse } from '../../../platform/http.ts';
+import { currentDns, DnsFailure, isIP } from '../../../platform/dns.ts';
+import { platform } from '../../../platform/index.ts';
+import { type Url } from '../../../platform/url.ts';
+import { type AbortSignal } from '../../../platform/abort.ts';
 
 const SPEC = {
   flags: 'qch',
@@ -58,7 +61,7 @@ function parse(args: string[]): WgetOpts | 'help' {
   return o;
 }
 
-function remoteName(url: URL): string {
+function remoteName(url: Url): string {
   const last = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
   let name = last;
   try {
@@ -68,7 +71,7 @@ function remoteName(url: URL): string {
 }
 
 /** Picks the local path: -O as given, else PREFIX/name with wget's .1, .2 ... suffixes for existing files. */
-function localName(ctx: Ctx, o: WgetOpts, url: URL): string {
+function localName(ctx: Ctx, o: WgetOpts, url: Url): string {
   if (o.output !== null) return o.output;
   const base = o.prefix ? `${o.prefix.replace(/\/+$/, '')}/${remoteName(url)}` : remoteName(url);
   if (o.resume) return base;
@@ -93,13 +96,12 @@ function save(ctx: Ctx, o: WgetOpts, name: string, text: string): string | null 
 async function resolveHost(ctx: Ctx, host: string, signal: AbortSignal, log: (s: string) => void): Promise<string | number> {
   log(`Resolving ${host} (${host})... `);
   try {
-    const addrs = await untilAbort(lookup(host, { all: true }), signal);
-    log(`${addrs.map((a) => a.address).join(', ')}\n`);
-    return addrs[0].address;
+    const addrs = await untilAbort(currentDns().lookup(host, 0), signal);
+    log(`${addrs.join(', ')}\n`);
+    return addrs[0];
   } catch (e) {
     if (ctx.signal.aborted) return abortCode(ctx.signal);
-    const code = (e as { code?: string }).code;
-    log(`failed: ${code === 'EAI_AGAIN' ? 'Temporary failure in name resolution' : 'Name or service not known'}.\n`);
+    log(`failed: ${e instanceof DnsFailure && e.message === 'NXDOMAIN' ? 'Name or service not known' : 'Temporary failure in name resolution'}.\n`);
     log(`wget: unable to resolve host address ‘${host}’\n`);
     return 4;
   }
@@ -127,15 +129,14 @@ async function retrieve(ctx: Ctx, o: WgetOpts, raw: string): Promise<number> {
         if (typeof ip === 'number') return ip;
         log(`Connecting to ${host} (${host})|${ip}|:${port}... `);
       }
-      let res: Response;
+      let res: HttpResponse;
       try {
-        res = await fetch(url, { headers: o.headers, redirect: 'manual', signal: req.signal });
+        res = await http(url.href, { headers: o.headers, redirect: 'manual', signal: req.signal });
       } catch (e) {
         if (ctx.signal.aborted) return abortCode(ctx.signal);
         const code = causeCode(e);
         if (DNS_ERRORS.has(code)) return (log(`failed: Name or service not known.\nwget: unable to resolve host address ‘${host}’\n`), 4);
-        const cause = (e as { cause?: Error }).cause;
-        return (log(`failed: ${CONNECT_ERRORS[code] ?? cause?.message ?? (e as Error).message}.\n`), 4);
+        return (log(`failed: ${CONNECT_ERRORS[code] ?? (e as Error).message}.\n`), 4);
       }
       if (connected !== `${host}:${port}`) log('connected.\n');
       connected = `${host}:${port}`;
@@ -157,7 +158,7 @@ async function retrieve(ctx: Ctx, o: WgetOpts, raw: string): Promise<number> {
   }
 }
 
-async function download(ctx: Ctx, o: WgetOpts, res: Response, name: string, log: (s: string) => void): Promise<number> {
+async function download(ctx: Ctx, o: WgetOpts, res: HttpResponse, name: string, log: (s: string) => void): Promise<number> {
   const length = res.headers.get('content-length');
   const type = res.headers.get('content-type')?.split(';')[0].trim();
   const total = length === null ? null : Number(length);
@@ -165,7 +166,7 @@ async function download(ctx: Ctx, o: WgetOpts, res: Response, name: string, log:
   log(`Length: ${sized}${type ? ` [${type}]` : ''}\n`);
   const toStdout = name === '-';
   log(`Saving to: ‘${toStdout ? 'STDOUT' : name}’\n\n`);
-  const start = performance.now();
+  const start = platform.now();
   let data: Uint8Array;
   try {
     data = new Uint8Array(await res.arrayBuffer());
@@ -174,7 +175,7 @@ async function download(ctx: Ctx, o: WgetOpts, res: Response, name: string, log:
     return (log(`Read error at byte 0 (${(e as Error).message}).\n`), 4);
   }
   const text = fromBytes(data);
-  const ms = performance.now() - start;
+  const ms = platform.now() - start;
   if (toStdout) ctx.stdout.write(text);
   else {
     const err = save(ctx, o, name, text);

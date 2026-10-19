@@ -10,6 +10,7 @@ import { parse } from './parser.ts';
 import { openRedirs, RedirError } from './redirect.ts';
 import type { Shell } from './shell.ts';
 import { execSimple } from './simple.ts';
+import { platform } from '../platform/index.ts';
 
 export interface RunOptions {
   /** Treat `exit` as ending only this run (subshells, command substitution, scripts). */
@@ -52,7 +53,7 @@ export async function checkpoint(shell: Shell, io?: IO): Promise<void> {
   if (shell.signal.aborted) throw new Interrupt(128 + (Number(shell.signal.reason) || 2));
   if (++ticks % 256 === 0) {
     await io?.stdout.drain?.();
-    await new Promise((r) => setImmediate(r));
+    await platform.yield();
   }
 }
 

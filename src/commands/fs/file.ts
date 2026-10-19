@@ -1,8 +1,9 @@
-import { createHash } from 'node:crypto';
 import type { Stat } from '../../vfs/types.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, parseArgs } from '../util.ts';
 import { DEVICES, msgOf, usage } from './common.ts';
+import { DIGESTS } from '../../lib/digest.ts';
+import { utf8Encode } from '../../vfs/bytes.ts';
 
 const MAGIC: [string, string][] = [
   ['\x7fELF', 'elf'],
@@ -26,7 +27,7 @@ const INTERPRETERS: Record<string, string> = {
 };
 
 function elf(data: string): string {
-  const id = createHash('sha1').update(data).digest('hex');
+  const id = DIGESTS.sha1(utf8Encode(data));
   return `ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=${id}, for GNU/Linux 3.2.0, stripped`;
 }
 

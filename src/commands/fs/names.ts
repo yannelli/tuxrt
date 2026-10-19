@@ -1,8 +1,8 @@
-import { randomInt } from 'node:crypto';
 import { basename as base, dirname as parent } from '../../vfs/path.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, parseArgs } from '../util.ts';
 import { err, joinPath, msgOf, q, usage } from './common.ts';
+import { platform } from '../../platform/index.ts';
 
 const ALNUM = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -50,7 +50,7 @@ function mktemp(ctx: Ctx): number {
   const stem = inTmp ? joinPath(dir, template) : template;
   const kind = opts.d ? 'directory' : 'file';
   for (let attempt = 0; attempt < 100; attempt++) {
-    const name = stem.slice(0, -xs) + Array.from({ length: xs }, () => ALNUM[randomInt(ALNUM.length)]).join('');
+    const name = stem.slice(0, -xs) + Array.from({ length: xs }, () => ALNUM[platform.random(1)[0] % ALNUM.length]).join('');
     const path = ctx.shell.abs(name);
     if (ctx.vfs.tryLookup(path, false)) continue;
     try {

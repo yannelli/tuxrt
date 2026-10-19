@@ -1,6 +1,8 @@
 import { errMessage, FsError } from '../vfs/errors.ts';
 import { readAll } from '../shell/io.ts';
 import type { Ctx } from './types.ts';
+import { platform } from '../platform/index.ts';
+import type { AbortSignal } from '../platform/abort.ts';
 
 export interface OptSpec {
   /** Single-letter boolean flags, e.g. "alhR". */
@@ -137,9 +139,9 @@ export function humanSize(bytes: number, si = false): string {
 
 export function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const timer = setTimeout(done, ms);
+    const timer = platform.setTimeout(done, ms);
     function done() {
-      clearTimeout(timer);
+      platform.clearTimeout(timer);
       signal.removeEventListener('abort', done);
       resolve();
     }

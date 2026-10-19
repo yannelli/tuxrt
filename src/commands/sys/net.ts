@@ -1,5 +1,4 @@
-import { lookup } from 'node:dns/promises';
-import { isIP } from 'node:net';
+import { currentDns, isIP } from '../../platform/dns.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { lines } from '../util.ts';
 import { hostsFile } from './probe.ts';
@@ -82,7 +81,7 @@ async function hostEntry(ctx: Ctx, key: string): Promise<string | undefined> {
   if (entry) return `${entry[0].padEnd(15)} ${entry[1].join(' ')}`;
   if (isIP(key)) return undefined;
   try {
-    return `${(await lookup(key)).address.padEnd(15)} ${key}`;
+    return `${(await currentDns().lookup(key, 0))[0].padEnd(15)} ${key}`;
   } catch {
     return undefined;
   }

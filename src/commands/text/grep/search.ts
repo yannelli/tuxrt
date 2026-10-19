@@ -1,6 +1,7 @@
 import type { Writer } from '../../../shell/io.ts';
 import type { LineSource } from '../stream.ts';
 import type { GrepOpts } from './options.ts';
+import { byteLength } from '../../../vfs/bytes.ts';
 
 /** State shared across files: whether anything was printed (for "--" separators) and early exit. */
 export interface GrepState {
@@ -71,7 +72,7 @@ export async function search(src: LineSource, name: string, showName: boolean, b
     if (raw === null) break;
     const line = raw.endsWith('\n') ? raw.slice(0, -1) : raw;
     const off = offset;
-    offset += Buffer.byteLength(raw);
+    offset += byteLength(raw);
     const hit = o.tests.some((re) => re.test(line)) !== o.invert;
     if (selected >= o.max) {
       if (after > 0 && !hit) {
@@ -90,7 +91,7 @@ export async function search(src: LineSource, name: string, showName: boolean, b
       if (o.filesWith || o.filesWithout) break;
       if (!printing) continue;
       if (o.only) {
-        if (!o.invert) for (const [s, e] of findAll(line, o.finders)) out.write(`${prefix(n, off + Buffer.byteLength(line.slice(0, s)), ':')}${sgr(c, '01;31', line.slice(s, e))}\n`);
+        if (!o.invert) for (const [s, e] of findAll(line, o.finders)) out.write(`${prefix(n, off + byteLength(line.slice(0, s)), ':')}${sgr(c, '01;31', line.slice(s, e))}\n`);
         continue;
       }
       for (const [bn, boff, bl] of before.splice(0)) emitLine(bn, boff, bl, '-');

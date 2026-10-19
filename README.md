@@ -37,6 +37,27 @@ const { stdout, code } = await rt.exec('echo hi | tr a-z A-Z');
 
 `rt.run(src, { stdin, stdout, stderr })` streams output instead of capturing it, and `rt.interrupt()` delivers SIGINT to the foreground job.
 
+### Any JavaScript engine
+
+The core is plain ECMAScript 2020 with no Node, DOM or `node:` imports, enforced by `tsconfig.core.json`. It runs on Node, Bun, Deno, browsers, JavaScriptCore (iOS and macOS, including a Swift `JSContext`), Hermes and QuickJS. On Node, the `node` export condition adds real sockets and resolvers, native deflate, process stats, a worker-thread `jq`, and the `node` command. Every other engine gets `tuxrt/portable`, or `tuxrt/bundle`, a single IIFE file that defines a global `tuxrt` for hosts that evaluate scripts.
+
+The engine only needs `setTimeout`. Each of the following globals is used when present:
+- `fetch`: curl and wget, plus DNS over HTTPS (Cloudflare) for `dig` and `ping`.
+- `crypto.getRandomValues` and `performance.now`.
+- `TextEncoder` and `URL`. tuxrt ships pure-JS fallbacks for both, along with deflate and the hash functions.
+
+Hosts can replace any piece:
+
+```js
+// e.g. after JSContext.evaluateScript(tuxrt.js) in Swift, with native bridges for timers and HTTP
+tuxrt.configurePlatform({ setTimeout: hostSetTimeout, clearTimeout: hostClearTimeout, http: hostHttp });
+const rt = await tuxrt.Runtime.boot();
+```
+
+See `Platform` in `src/platform/index.ts` for the full interface (clock, randomness, timers, HTTP, DNS, TCP probe, extra commands).
+
+Without threads, `jq` runs on the caller's thread. Streaming and Ctrl-C work between outputs, but a filter that loops forever without output can't be interrupted, and recursion depth is limited by the engine's stack.
+
 ## What is emulated
 
 - **Filesystem.** An inode-based VFS with files, directories, symlinks, hard links, modes, owners, and setuid/sticky bits. Permissions are enforced (`/etc/shadow`, `/root`, and `/etc` are closed to `ubuntu`). It has a full Ubuntu layout (`/etc/os-release`, `/etc/passwd`, `/home/ubuntu`, `/tmp` with mode 1777, `/bin -> usr/bin`), plus live `/proc` (`cpuinfo`, `meminfo`, `uptime`, `version`) and `/dev` (`null`, `zero`, `urandom`, `tty`).
@@ -47,7 +68,7 @@ const { stdout, code } = await rt.exec('echo hi | tr a-z A-Z');
   - Builtins: aliases, `set -euxo pipefail`, `read`, `getopts`, `printf`, `test`, `eval`, `source`, and `exec`.
 - **Processes.** A process table with system daemons. Each command runs as a process visible to `ps`. Background jobs work with `jobs`, `fg`, `wait`, and `kill %1`, and Ctrl-C reaches running commands.
 - **Users.** `sudo`, `su`, `sudo -i`, `useradd`, `passwd`, `id`, and `groups`, backed by `/etc/passwd` and `/etc/group`. Members of the `sudo` group can use sudo without a password, as on an Ubuntu cloud image, and root's password is locked.
-- **Network.** `curl` and `wget` make real HTTP requests. `ping` and `ping6` resolve names with real DNS and report a real round-trip time measured with a TCP connect, because ICMP needs raw sockets that Node does not offer on every OS. `traceroute` emulates the gateway hop and measures the destination for real. `dig`, `host`, and `nslookup` query real DNS.
+- **Network.** `curl` and `wget` make real HTTP requests. `ping` and `ping6` resolve names with real DNS and report a real round-trip time. On Node the time comes from a TCP connect, because ICMP needs raw sockets that Node does not offer on every OS. Engines with only `fetch` time an HTTP request instead. `traceroute` emulates the gateway hop and measures the destination for real. `dig`, `host`, and `nslookup` query real DNS.
 - **Archives.** `tar` (ustar, `-z`), `gzip`/`gunzip`/`zcat`, and `zip`/`unzip` produce and read real archive bytes.
 - **Docs.** `man`, `whatis`, `apropos`, and `mandb` render roff pages the way man-db does. There are hand-written pages for the core commands, and pages generated from the registry for everything else.
 - **Packages.** `apt` and `dpkg` simulate installs. `cowsay` and `jq` come preinstalled, while `figlet`, `sl`, and `neofetch` appear after `sudo apt install`.
@@ -61,7 +82,9 @@ src/vfs/        filesystem, Ubuntu rootfs bootstrap, procfs/devfs, users, snapsh
 src/shell/      lexer, parser, expansions, interpreter, redirections, jobs, processes
 src/commands/   builtins/ fs/ text/ awk/ sys/ extra/ (one CommandTable per group)
 src/repl/       interactive terminal: prompt, completion, TTY stdin
-src/runtime.ts  public API;  src/cli.ts  entry point
+src/platform/   host abstraction: portable defaults, HTTP/DNS over fetch, URL fallback; node/ adapter
+src/lib/        pure-JS deflate/inflate and MD5/SHA digests
+src/runtime.ts  portable API;  src/node.ts  Node entry;  src/cli.ts  CLI
 ```
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for how to add a command.
@@ -69,9 +92,10 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for how to add a command.
 ## Development
 
 ```sh
-npm install         # dev-only: typescript, @types/node
-npm test            # node:test suites
-npm run typecheck
+npm install            # dev-only: typescript, @types/node, esbuild
+npm test               # node:test suites on the Node platform
+npm run test:portable  # the same suites on the plain-ECMAScript platform
+npm run typecheck      # includes the no-Node core check
 ```
 
 ## Limitations

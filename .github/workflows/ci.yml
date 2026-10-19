@@ -20,5 +20,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:portable
       - name: Smoke test the built CLI
         run: node dist/cli.js -c "uname -a && echo hi | tr a-z A-Z && cowsay moo"

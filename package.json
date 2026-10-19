@@ -11,21 +11,30 @@
   "exports": {
     ".": {
       "types": "./dist/runtime.d.ts",
+      "node": "./dist/node.js",
       "default": "./dist/runtime.js"
-    }
+    },
+    "./portable": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./bundle": "./dist/tuxrt.js"
   },
   "engines": {
     "node": ">=20.11"
   },
   "scripts": {
     "start": "node src/cli.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && npm run bundle",
     "prepare": "npm run build",
     "test": "node --test \"test/*.test.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.core.json",
+    "bundle": "esbuild src/runtime.ts --bundle --format=iife --global-name=tuxrt --target=es2020 --log-level=warning --outfile=dist/tuxrt.js",
+    "test:portable": "node --test \"test/*.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "esbuild": "^0.25.12",
     "typescript": "^5.9.0"
   },
   "files": [

@@ -7,6 +7,7 @@ import { RecordSource } from './records.ts';
 import { RegexError } from './regex.ts';
 import { AwkError, stdinSource } from './streams.ts';
 import { AwkArray, strnum, toBool, toNum, UNINIT, type Val } from './value.ts';
+import { platform } from '../../platform/index.ts';
 
 const BREAK = 1;
 const CONTINUE = 2;
@@ -78,7 +79,7 @@ export class Interp extends Evaluator {
   private async tick(): Promise<void> {
     if (++this.ticks % 1000 === 0) {
       await this.ctx.stdout.drain?.();
-      await new Promise((r) => setImmediate(r));
+      await platform.yield();
     }
     if (this.ctx.signal.aborted) throw ABORT;
   }

@@ -1,3 +1,4 @@
+import type { AbortController } from '../platform/abort.ts';
 export interface Proc {
   pid: number;
   ppid: number;

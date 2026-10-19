@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Runtime } from '../src/runtime.ts';
-import { machine, sh } from './helpers.ts';
+import { machine, Runtime, sh } from './helpers.ts';
 
 const out = async (cmd: string, stdin?: string) => (await sh(cmd, stdin)).stdout;
 

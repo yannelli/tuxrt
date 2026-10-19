@@ -1,3 +1,8 @@
+import { AbortController, AbortSignal } from '../../../platform/abort.ts';
+import { NetError, type HttpRequest, type HttpResponse } from '../../../platform/http.ts';
+import { platform } from '../../../platform/index.ts';
+import { URL, type Url } from '../../../platform/url.ts';
+
 export interface ArgSpec {
   /** Single-letter boolean flags. */
   flags: string;
@@ -61,10 +66,15 @@ export function scanArgs(args: string[], spec: ArgSpec): { opts: Opt[]; operands
   return { opts, operands };
 }
 
-/** Node's fetch reports network failures as TypeError("fetch failed") with the system error as `cause`. */
+/** errno-style code of a failed request, or '' when the platform could not tell. */
 export function causeCode(e: unknown): string {
-  const cause = (e as { cause?: { code?: string; errors?: { code?: string }[] } } | null)?.cause;
-  return cause?.code ?? cause?.errors?.[0]?.code ?? '';
+  return e instanceof NetError ? e.code : '';
+}
+
+/** The platform's HTTP client; without one, requests fail the way they do on a machine with no network. */
+export function http(url: string, req: HttpRequest): Promise<HttpResponse> {
+  if (!platform.http) return Promise.reject(new NetError('EAI_AGAIN', 'Temporary failure in name resolution'));
+  return platform.http(url, req);
 }
 
 export const DNS_ERRORS = new Set(['ENOTFOUND', 'EAI_AGAIN', 'EAI_NONAME', 'EAI_FAIL']);
@@ -73,7 +83,7 @@ export function withScheme(raw: string): string {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `http://${raw}`;
 }
 
-export function defaultPort(url: URL): string {
+export function defaultPort(url: Url): string {
   return url.port || (url.protocol === 'https:' ? '443' : '80');
 }
 
@@ -84,9 +94,10 @@ export function abortCode(signal: AbortSignal): number {
 /** Per-request signal: the job's signal, an optional timeout, and a controller to release the body afterwards. */
 export function requestSignal(parent: AbortSignal, ms: number) {
   const controller = new AbortController();
-  const timeout = ms > 0 ? AbortSignal.timeout(ms) : null;
-  const signal = AbortSignal.any(timeout ? [parent, controller.signal, timeout] : [parent, controller.signal]);
-  return { signal, release: () => controller.abort(), timedOut: () => timeout?.aborted ?? false };
+  let timedOut = false;
+  const timer = ms > 0 ? platform.setTimeout(() => ((timedOut = true), controller.abort(new Error('timeout'))), ms) : null;
+  const release = () => (platform.clearTimeout(timer), controller.abort());
+  return { signal: AbortSignal.any([parent, controller.signal]), release, timedOut: () => timedOut };
 }
 
 /** Races a non-abortable promise (dns lookup) against a signal. */
@@ -99,7 +110,7 @@ export function untilAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise
   });
 }
 
-export function parseUrl(raw: string, base?: URL): URL | null {
+export function parseUrl(raw: string, base?: Url): Url | null {
   try {
     return new URL(raw, base);
   } catch {

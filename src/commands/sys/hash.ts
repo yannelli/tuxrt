@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
-import { fromBytes, toBytes } from '../../vfs/bytes.ts';
+import { DIGESTS } from '../../lib/digest.ts';
+import { base64Decode, base64Encode, fromBytes, toBytes } from '../../vfs/bytes.ts';
 import type { CommandDef, CommandTable, Ctx } from '../types.ts';
 import { command, fail, lines, parseArgs, readInput, readInputs } from '../util.ts';
 
@@ -59,7 +59,7 @@ function hasher(algo: string, tag: string): CommandDef {
         flags: 'cbtwz',
         long: { check: 'c', binary: 'b', text: 't', tag: 'tag', quiet: 'quiet', status: 'status', warn: 'w', strict: 'strict', zero: 'z' },
       });
-      const digest = (text: string) => createHash(algo).update(toBytes(text)).digest('hex');
+      const digest = (text: string) => DIGESTS[algo](toBytes(text));
       if (opts.c) return check(ctx, operands, digest, opts);
       return readInputs(ctx, operands, (text, name) => {
         ctx.stdout.write(opts.tag ? `${tag} (${name}) = ${digest(text)}\n` : `${digest(text)}  ${name}\n`);
@@ -79,10 +79,10 @@ async function base64(ctx: Ctx): Promise<number> {
     let clean = text.replace(/\s/g, '');
     if (opts.i) clean = clean.replace(/[^A-Za-z0-9+/=]/g, '');
     const valid = /^[A-Za-z0-9+/]*={0,2}$/.test(clean) && clean.length % 4 !== 1;
-    ctx.stdout.write(fromBytes(Buffer.from(valid ? clean : clean.replace(/[^A-Za-z0-9+/].*$/, ''), 'base64')));
+    ctx.stdout.write(fromBytes(base64Decode(valid ? clean : clean.replace(/[^A-Za-z0-9+/].*$/, ''))));
     return valid ? 0 : fail(ctx, 'invalid input');
   }
-  const encoded = toBytes(text).toString('base64');
+  const encoded = base64Encode(toBytes(text));
   if (!wrap) return (ctx.stdout.write(encoded), 0);
   if (encoded) ctx.stdout.write(`${encoded.match(new RegExp(`.{1,${wrap}}`, 'g'))!.join('\n')}\n`);
   return 0;
@@ -95,7 +95,7 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, i) => {
 });
 
 /** POSIX cksum: CRC-32/CKSUM over the data followed by its length. */
-function crc(bytes: Buffer): number {
+function crc(bytes: Uint8Array): number {
   let c = 0;
   const step = (b: number) => (c = ((c << 8) ^ CRC_TABLE[((c >>> 24) ^ b) & 0xff]) >>> 0);
   for (const b of bytes) step(b);

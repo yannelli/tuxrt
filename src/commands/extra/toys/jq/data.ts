@@ -6,6 +6,7 @@ import { add } from './ops.ts';
 import { codepoints, subarrayIndices } from './paths.ts';
 import type { Env } from './registry.ts';
 import { compare, equal, isNum, isObj, JqError, kind, num, sortedKeys, type Value } from './value.ts';
+import { byteLength } from '../../../../vfs/bytes.ts';
 
 function items(v: Value): Value[] {
   if (Array.isArray(v)) return v;
@@ -70,7 +71,7 @@ fn('length', 0, (v) => {
 });
 fn('utf8bytelength', 0, (v) => {
   if (typeof v !== 'string') throw new JqError(`${describe(v)} only strings have UTF-8 byte length`);
-  return new TextEncoder().encode(v).length;
+  return byteLength(v);
 });
 fn('keys', 0, (v) => {
   if (isObj(v)) return sortedKeys(v);

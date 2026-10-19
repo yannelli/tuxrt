@@ -1,4 +1,4 @@
-import { Buffer } from 'node:buffer';
+import { base64Decode, base64Encode, utf8Decode, utf8Encode } from '../../../../vfs/bytes.ts';
 import { describe, tojson } from './dump.ts';
 import { isNum, isObj, JqError, num, type Value } from './value.ts';
 
@@ -11,7 +11,7 @@ const tostr = (v: Value): string => (typeof v === 'string' ? v : tojson(v));
 
 function uri(s: string): string {
   let out = '';
-  for (const b of Buffer.from(s, 'utf8')) {
+  for (const b of utf8Encode(s)) {
     const c = String.fromCharCode(b);
     out += /[A-Za-z0-9\-_.~]/.test(c) ? c : `%${b.toString(16).toUpperCase().padStart(2, '0')}`;
   }
@@ -44,7 +44,7 @@ function base32(s: string): string {
   let bits = 0;
   let acc = 0;
   let out = '';
-  for (const b of Buffer.from(s, 'utf8')) {
+  for (const b of utf8Encode(s)) {
     acc = ((acc << 8) | b) & 0xffff;
     bits += 8;
     for (; bits >= 5; bits -= 5) out += B32[(acc >> (bits - 5)) & 31];
@@ -67,13 +67,13 @@ function base32d(s: string, v: Value): string {
       bits -= 8;
     }
   }
-  return Buffer.from(bytes).toString('utf8');
+  return utf8Decode(Uint8Array.from(bytes));
 }
 
 function base64d(s: string, v: Value): string {
   const body = s.replace(/=+$/, '');
   if (/[^A-Za-z0-9+/]/.test(body) || body.length % 4 === 1) throw new JqError(`${describe(v)} is not valid base64 data`);
-  return Buffer.from(body, 'base64').toString('utf8');
+  return utf8Decode(base64Decode(body));
 }
 
 /** Applies `@name` to a value; every format but csv/tsv/sh/json stringifies its input first. */
@@ -86,7 +86,7 @@ export function format(name: string, v: Value): Value {
     case 'csv':
     case 'tsv': return row(v, name);
     case 'sh': return sh(v);
-    case 'base64': return Buffer.from(tostr(v), 'utf8').toString('base64');
+    case 'base64': return base64Encode(utf8Encode(tostr(v)));
     case 'base64d': return base64d(tostr(v), v);
     case 'base32': return base32(tostr(v));
     case 'base32d': return base32d(tostr(v), v);

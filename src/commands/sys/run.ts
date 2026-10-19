@@ -8,6 +8,8 @@ import { strftime } from './datefmt.ts';
 import { isProgram, leadingOpts, parseDuration, programShell, streams } from './exec.ts';
 import { hostname } from './info.ts';
 import { parseSignal, SIGNAL_NAMES } from './procinfo.ts';
+import { platform } from '../../platform/index.ts';
+import { AbortController } from '../../platform/abort.ts';
 
 const TRY = (name: string) => `Try '${name} --help' for more information.`;
 
@@ -72,13 +74,14 @@ const clock = (s: number) => `${Math.floor(s / 60)}m${(s % 60).toFixed(3)}s`;
 async function time(ctx: Ctx): Promise<number> {
   const posix = ctx.args[0] === '-p';
   const argv = posix ? ctx.args.slice(1) : ctx.args;
-  const start = performance.now();
-  const cpu = process.cpuUsage();
+  const start = platform.now();
+  const cpu = platform.cpuUsage?.();
   try {
     return argv.length ? await dispatch(argv, ctx.shell, streams(ctx)) : 0;
   } finally {
-    const real = (performance.now() - start) / 1000;
-    const { user, system } = process.cpuUsage(cpu);
+    const real = (platform.now() - start) / 1000;
+    const end = platform.cpuUsage?.();
+    const [user, system] = cpu && end ? [end.user - cpu.user, end.system - cpu.system] : [0, 0];
     const [u, s] = [user / 1e6, system / 1e6];
     ctx.stderr.write(posix ? `real ${real.toFixed(2)}\nuser ${u.toFixed(2)}\nsys ${s.toFixed(2)}\n` : `\nreal\t${clock(real)}\nuser\t${clock(u)}\nsys\t${clock(s)}\n`);
   }
@@ -104,7 +107,7 @@ async function timeout(ctx: Ctx): Promise<number> {
   ctx.signal.addEventListener('abort', forward, { once: true });
   let timedOut = false;
   const timer = secs > 0 && secs < 2 ** 31 / 1000
-    ? setTimeout(() => {
+    ? platform.setTimeout(() => {
         timedOut = true;
         if (opts.v) ctx.stderr.write(`timeout: sending signal ${SIGNAL_NAMES[signal] ?? signal} to command ‘${argv[0]}’\n`);
         controller.abort(signal);
@@ -117,7 +120,7 @@ async function timeout(ctx: Ctx): Promise<number> {
     if (e instanceof Interrupt && timedOut) return opts.p ? e.code : 124;
     throw e;
   } finally {
-    clearTimeout(timer);
+    platform.clearTimeout(timer);
     ctx.signal.removeEventListener('abort', forward);
   }
 }

@@ -1,9 +1,10 @@
-import { randomBytes } from 'node:crypto';
 import { createHome } from '../../vfs/bootstrap.ts';
 import { findGroup, findUser, listGroups, listUsers } from '../../vfs/users.ts';
 import type { CommandTable, Ctx } from '../types.ts';
 import { command, parseArgs } from '../util.ts';
 import { addGroup, addUser, asRoot, nextId, removeGroup, removeTree, removeUser, setGroups, setPassword, shadowEntry, updateUser } from './usersdb.ts';
+import { platform } from '../../platform/index.ts';
+import { base64Encode } from '../../vfs/bytes.ts';
 
 const NAME = /^[a-z_][a-z0-9_-]*\$?$/;
 
@@ -199,7 +200,7 @@ function passwd(ctx: Ctx): number {
     return 0;
   }
   if ((opts.l || opts.u || opts.d || opts.e) && !root) return err(ctx, 'Permission denied.', 1);
-  const fresh = `$y$j9T$${randomBytes(12).toString('base64')}`;
+  const fresh = `$y$j9T$${base64Encode(platform.random(12))}`;
   setPassword(ctx.vfs, name, (h) => (opts.l ? `!${h.replace(/^!/, '')}` : opts.u ? h.replace(/^!/, '') : opts.d ? '' : opts.e ? h : fresh));
   ctx.stdout.write(opts.l || opts.u || opts.d || opts.e ? 'passwd: password changed.\n' : 'passwd: password updated successfully\n');
   return 0;

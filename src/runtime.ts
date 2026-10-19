@@ -8,6 +8,7 @@ import { bootstrap, DEFAULT_USER } from './vfs/bootstrap.ts';
 import { machine } from './vfs/machine.ts';
 import { findUser } from './vfs/users.ts';
 import type { VFS } from './vfs/vfs.ts';
+import { AbortController } from './platform/abort.ts';
 
 export interface RuntimeOptions {
   /** Login user (default "ubuntu"). */
@@ -96,3 +97,7 @@ export class Runtime {
 }
 
 export { bootstrap };
+export { AbortController, AbortSignal } from './platform/abort.ts';
+export { DnsFailure, type Dns, type DnsRecord } from './platform/dns.ts';
+export { HeaderList, httpOverFetch, NetError, type Http, type HttpRequest, type HttpResponse } from './platform/http.ts';
+export { configurePlatform, portablePlatform, type Platform, type Probe } from './platform/index.ts';

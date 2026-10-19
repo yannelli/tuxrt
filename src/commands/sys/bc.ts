@@ -4,6 +4,7 @@ import { command, parseArgs } from '../util.ts';
 import { MATH_FUNCTIONS, mathLib } from './bcmath.ts';
 import { add, BcError, cmp, div, format, mod, mul, neg, num, ONE, parseNum, power, rescale, sqrt, sub, truthy, wrap, ZERO, type Num } from './bcnum.ts';
 import { BcSyntaxError, lex, Parser, type Expr, type Stmt } from './bcparse.ts';
+import { platform } from '../../platform/index.ts';
 
 const BREAK = Symbol('break');
 const CONTINUE = Symbol('continue');
@@ -87,7 +88,7 @@ class Calculator {
 
   private async loop(cond: () => boolean, body: Stmt, step?: () => void): Promise<void> {
     while (cond()) {
-      if (++this.ticks % 1000 === 0) await new Promise((r) => setImmediate(r));
+      if (++this.ticks % 1000 === 0) await platform.yield();
       if (this.ctx.signal.aborted) throw QUIT;
       try {
         await this.exec(body);

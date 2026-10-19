@@ -4,7 +4,7 @@ import { basename } from '../../../../vfs/path.ts';
 import type { Stat } from '../../../../vfs/types.ts';
 import type { Ctx } from '../../../types.ts';
 import { command, parseArgs } from '../../../util.ts';
-import { fromBytes, toBytes } from '../../../../vfs/bytes.ts';
+import { fromBytes, toBytes, utf8Encode } from '../../../../vfs/bytes.ts';
 import { makeEntry, readZip, writeZip, ZipError, type ZipEntry } from './format.ts';
 
 interface ZipOpts {
@@ -69,7 +69,7 @@ async function collect(ctx: Ctx, o: ZipOpts, arg: string, archive: string, out: 
 function entryFor(ctx: Ctx, s: Source): ZipEntry {
   const { vfs } = ctx;
   if (s.st.kind === 'dir') return makeEntry(s.name, new Uint8Array(0), s.st.mode, 'dir', s.st.mtime);
-  const data = s.st.kind === 'symlink' ? Buffer.from(vfs.readlink(s.path), 'utf8') : toBytes(vfs.readFile(s.path));
+  const data = s.st.kind === 'symlink' ? utf8Encode(vfs.readlink(s.path)) : toBytes(vfs.readFile(s.path));
   return makeEntry(s.name, data, s.st.mode, s.st.kind, s.st.mtime);
 }
 

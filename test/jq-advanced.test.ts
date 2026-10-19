@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Runtime } from '../src/runtime.ts';
-import { machine } from './helpers.ts';
+import { machine, NODE_ONLY, Runtime } from './helpers.ts';
 
 const run = await machine();
 const out = async (cmd: string, stdin?: string) => (await run(cmd, stdin)).stdout;
@@ -45,12 +44,21 @@ test('input streams: endless producers, chunked values, line-buffered parsing', 
   assert.equal((await run(`printf '[1,2' | jq .`)).code, 2);
 });
 
-test('deep and tail recursion', async () => {
+test('tail recursion runs in constant stack', async () => {
   assert.equal(await out(`jq -n 'def f: if . < 1000000 then .+1 | f else . end; 0 | f'`), '1000000\n');
+});
+
+test('deep recursion', { skip: NODE_ONLY }, async () => {
   assert.equal(await out(`jq -n 'def f($n): if $n == 0 then 0 else 1 + f($n - 1) end; f(50000)'`), '50000\n');
 });
 
-test('Ctrl-C and kill stop silent infinite loops', async () => {
+test('Ctrl-C stops a jq that keeps writing', async () => {
+  const rt = await Runtime.boot();
+  setTimeout(() => rt.interrupt(), 100);
+  assert.equal((await rt.exec(`jq -n 'repeat(1)' > /dev/null`)).code, 130);
+});
+
+test('Ctrl-C and kill stop silent infinite loops', { skip: NODE_ONLY }, async () => {
   const rt = await Runtime.boot();
   for (const filter of ['last(repeat(1))', '[range(1e12)] | length', 'def f: f; f']) {
     const started = Date.now();

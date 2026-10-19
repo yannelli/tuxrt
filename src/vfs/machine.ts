@@ -1,4 +1,5 @@
-import { randomBytes } from 'node:crypto';
+import { platform } from '../platform/index.ts';
+import { latin1 } from './bytes.ts';
 
 export const machine = {
   kernel: 'Linux',
@@ -19,12 +20,12 @@ export function uptimeSeconds(): number {
 
 /** Fake but internally consistent memory accounting so free, top and /proc/meminfo agree. */
 export function memoryUsage() {
-  const used = Math.round(machine.memKb * 0.18 + process.memoryUsage().heapUsed / 1024);
+  const used = Math.round(machine.memKb * 0.18 + (platform.heapUsed?.() ?? 0) / 1024);
   const buffCache = Math.round(machine.memKb * 0.22);
   const free = machine.memKb - used - buffCache;
   return { total: machine.memKb, used, free, shared: 1204, buffCache, available: free + buffCache };
 }
 
 export function randomText(bytes: number): string {
-  return randomBytes(bytes).toString('latin1');
+  return latin1(platform.random(bytes));
 }

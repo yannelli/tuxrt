@@ -5,6 +5,7 @@ import type { VFS } from '../vfs/vfs.ts';
 import type { Node } from './ast.ts';
 import type { Writer } from './io.ts';
 import type { ProcessTable } from './process.ts';
+import { AbortController, AbortSignal } from '../platform/abort.ts';
 
 export interface Job {
   id: number;

@@ -9,6 +9,7 @@ import { fsCommands } from './fs/index.ts';
 import { sysCommands } from './sys/index.ts';
 import { textCommands } from './text/index.ts';
 import type { CommandDef, CommandTable } from './types.ts';
+import { platform } from '../platform/index.ts';
 
 const tables: CommandTable[] = [
   coreBuiltins, varBuiltins, jobBuiltins, testBuiltins, printfBuiltins,
@@ -16,7 +17,7 @@ const tables: CommandTable[] = [
 ];
 
 export function createRegistry(): Map<string, CommandDef> {
-  return new Map(tables.flatMap((t) => Object.entries(t)));
+  return new Map([...tables, platform.commands ?? {}].flatMap((t) => Object.entries(t)));
 }
 
 /** Names that get an ELF stub in /usr/bin. */

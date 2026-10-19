@@ -1,5 +1,8 @@
-import { deflateRawSync, inflateRawSync } from 'node:zlib';
-import { fromBytes } from '../../../../vfs/bytes.ts';
+import { deflateRaw } from '../../../../lib/deflate.ts';
+import { inflateRaw } from '../../../../lib/inflate.ts';
+import { LEBytes } from '../../../../lib/le.ts';
+import { platform } from '../../../../platform/index.ts';
+import { concatBytes, fromBytes, utf8Encode } from '../../../../vfs/bytes.ts';
 import { crc32 } from '../gzfmt.ts';
 
 export interface ZipEntry {
@@ -34,7 +37,7 @@ export function unixMode(e: ZipEntry): number | null {
 
 /** Deflates unless that does not shrink the data, like Info-ZIP; `name` ends with "/" for directories. */
 export function makeEntry(name: string, data: Uint8Array, perm: number, kind: 'file' | 'dir' | 'symlink', mtime: number): ZipEntry {
-  const deflated = data.length ? deflateRawSync(data) : null;
+  const deflated = data.length ? (platform.deflateRaw ?? deflateRaw)(data, 6) : null;
   const useDeflate = deflated !== null && deflated.length < data.length;
   const type = kind === 'dir' ? S_IFDIR : kind === 'symlink' ? S_IFLNK : S_IFREG;
   return {
@@ -46,7 +49,7 @@ export function makeEntry(name: string, data: Uint8Array, perm: number, kind: 'f
 
 export function unpack(e: ZipEntry): Uint8Array {
   if (e.method === 0) return e.packed;
-  if (e.method === 8) return inflateRawSync(e.packed);
+  if (e.method === 8) return inflateRaw(e.packed).out;
   throw new ZipError(`unsupported compression method ${e.method}`);
 }
 
@@ -62,8 +65,8 @@ function fromDos(time: number, date: number): number {
 }
 
 /** Info-ZIP "UT" extra field so mtimes survive at one-second precision. */
-function timeExtra(ms: number): Buffer {
-  const b = Buffer.alloc(9);
+function timeExtra(ms: number): LEBytes {
+  const b = new LEBytes(9);
   b.writeUInt16LE(EXT_TIME, 0);
   b.writeUInt16LE(5, 2);
   b[4] = 1;
@@ -72,27 +75,27 @@ function timeExtra(ms: number): Buffer {
 }
 
 function extraTime(extra: Uint8Array): number | null {
-  const b = Buffer.from(extra.buffer, extra.byteOffset, extra.byteLength);
+  const b = LEBytes.over(extra);
   for (let p = 0; p + 4 <= b.length; p += 4 + b.readUInt16LE(p + 2)) {
     if (b.readUInt16LE(p) === EXT_TIME && b.readUInt16LE(p + 2) >= 5 && b[p + 4] & 1) return b.readUInt32LE(p + 5) * 1000;
   }
   return null;
 }
 
-export function writeZip(entries: ZipEntry[]): Buffer {
+export function writeZip(entries: ZipEntry[]): Uint8Array {
   const locals: Uint8Array[] = [];
   const centrals: Uint8Array[] = [];
   let offset = 0;
   for (const e of entries) {
-    const name = Buffer.from(e.name, 'utf8');
+    const name = utf8Encode(e.name);
     const extra = timeExtra(e.mtime);
     const [time, date] = dosTime(e.mtime);
     const needed = e.method === 8 ? 20 : 10;
-    const local = Buffer.alloc(30);
+    const local = new LEBytes(30);
     local.writeUInt32LE(SIG_LOCAL, 0);
     for (const [at, v] of [[4, needed], [6, e.flags], [8, e.method], [10, time], [12, date], [26, name.length], [28, extra.length]]) local.writeUInt16LE(v, at);
     for (const [at, v] of [[14, e.crc], [18, e.packed.length], [22, e.size]]) local.writeUInt32LE(v, at);
-    const central = Buffer.alloc(46);
+    const central = new LEBytes(46);
     central.writeUInt32LE(SIG_CENTRAL, 0);
     for (const [at, v] of [[4, e.madeBy], [6, needed], [8, e.flags], [10, e.method], [12, time], [14, date], [28, name.length], [30, extra.length]]) central.writeUInt16LE(v, at);
     for (const [at, v] of [[16, e.crc], [20, e.packed.length], [24, e.size], [38, e.attr], [42, offset]]) central.writeUInt32LE(v, at);
@@ -100,23 +103,23 @@ export function writeZip(entries: ZipEntry[]): Buffer {
     centrals.push(central, name, extra);
     offset += local.length + name.length + extra.length + e.packed.length;
   }
-  const cd = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
+  const cd = concatBytes(centrals);
+  const end = new LEBytes(22);
   end.writeUInt32LE(SIG_END, 0);
   end.writeUInt16LE(entries.length, 8);
   end.writeUInt16LE(entries.length, 10);
   end.writeUInt32LE(cd.length, 12);
   end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...locals, cd, end]);
+  return concatBytes([...locals, cd, end]);
 }
 
-function findEnd(b: Buffer): number {
+function findEnd(b: LEBytes): number {
   for (let i = b.length - 22; i >= Math.max(0, b.length - 65557); i--) if (b.readUInt32LE(i) === SIG_END) return i;
   throw new ZipError('End-of-central-directory signature not found.');
 }
 
 export function readZip(bytes: Uint8Array): ZipEntry[] {
-  const b = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const b = LEBytes.over(bytes);
   const end = findEnd(b);
   const out: ZipEntry[] = [];
   let p = b.readUInt32LE(end + 16);

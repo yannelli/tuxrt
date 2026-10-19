@@ -1,7 +1,7 @@
 import { globToRegExp } from '../../../../shell/glob.ts';
 import type { Ctx } from '../../../types.ts';
 import { command, parseArgs } from '../../../util.ts';
-import { fromBytes, toBytes } from '../../../../vfs/bytes.ts';
+import { concatBytes, fromBytes, toBytes } from '../../../../vfs/bytes.ts';
 import { isoMinute } from '../stamp.ts';
 import { extract, type UnzipOpts } from './extract.ts';
 import { readZip, unpack, ZipError, type ZipEntry } from './format.ts';
@@ -77,7 +77,7 @@ async function unzip(ctx: Ctx): Promise<number> {
   });
   let status = 0;
   if (opts.l) list(ctx, selected);
-  else if (opts.p) ctx.stdout.write(fromBytes(Buffer.concat(selected.filter((e) => !e.name.endsWith('/')).map(unpack))));
+  else if (opts.p) ctx.stdout.write(fromBytes(concatBytes(selected.filter((e) => !e.name.endsWith('/')).map(unpack))));
   else {
     const exdir = typeof opts.d === 'string' ? opts.d : null;
     const o: UnzipOpts = { overwrite: !!opts.o, never: !!opts.n, quiet, junk: !!opts.j, exdir };

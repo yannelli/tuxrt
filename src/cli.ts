@@ -4,7 +4,7 @@ import { binaryNames, createRegistry } from './commands/index.ts';
 import { motd } from './repl/motd.ts';
 import { startRepl } from './repl/repl.ts';
 import { streamReader, terminalWriter } from './repl/tty.ts';
-import { Runtime } from './runtime.ts';
+import { Runtime } from './node.ts';
 import { EMPTY, readAll } from './shell/io.ts';
 import { restore, snapshot } from './vfs/persist.ts';
 

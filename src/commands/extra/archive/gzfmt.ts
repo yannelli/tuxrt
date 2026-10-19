@@ -1,4 +1,7 @@
-import { deflateRawSync, gunzipSync } from 'node:zlib';
+import { deflateRaw } from '../../../lib/deflate.ts';
+import { InflateError, inflateRaw } from '../../../lib/inflate.ts';
+import { platform } from '../../../platform/index.ts';
+import { concatBytes, utf8Encode } from '../../../vfs/bytes.ts';
 
 const FNAME = 8;
 const CRC_TABLE = new Int32Array(256).map((_, n) => {
@@ -7,7 +10,6 @@ const CRC_TABLE = new Int32Array(256).map((_, n) => {
   return c;
 });
 
-// zlib.crc32 only exists on newer Node releases.
 export function crc32(data: Uint8Array): number {
   let c = -1;
   for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
@@ -26,19 +28,19 @@ export interface GzipOptions {
 }
 
 /** Builds a gzip member by hand so the original name and mtime land in the header like GNU gzip. */
-export function gzip(data: Uint8Array, o: GzipOptions = {}): { out: Buffer; packed: number } {
+export function gzip(data: Uint8Array, o: GzipOptions = {}): { out: Uint8Array; packed: number } {
   const level = o.level ?? 6;
-  const head = Buffer.alloc(10);
+  const head = new Uint8Array(10);
   head.set([0x1f, 0x8b, 8, o.name ? FNAME : 0]);
-  head.writeUInt32LE(Math.max(0, Math.floor(o.mtime ?? 0)) >>> 0, 4);
+  new DataView(head.buffer).setUint32(4, Math.max(0, Math.floor(o.mtime ?? 0)) >>> 0, true);
   head[8] = level === 9 ? 2 : level === 1 ? 4 : 0;
   head[9] = 3;
-  const name = o.name ? Buffer.from(`${o.name}\0`, 'utf8') : Buffer.alloc(0);
-  const body = deflateRawSync(data, { level });
-  const tail = Buffer.alloc(8);
-  tail.writeUInt32LE(crc32(data), 0);
-  tail.writeUInt32LE(data.length >>> 0, 4);
-  return { out: Buffer.concat([head, name, body, tail]), packed: body.length };
+  const name = o.name ? utf8Encode(`${o.name}\0`) : new Uint8Array(0);
+  const body = platform.deflateRaw ? platform.deflateRaw(data, level) : deflateRaw(data, level);
+  const tail = new Uint8Array(8);
+  new DataView(tail.buffer).setUint32(0, crc32(data), true);
+  new DataView(tail.buffer).setUint32(4, data.length >>> 0, true);
+  return { out: concatBytes([head, name, body, tail]), packed: body.length };
 }
 
 /** Header plus trailer size of the first member, for gzip -v ratios. */
@@ -56,15 +58,27 @@ export function gzipOverhead(data: Uint8Array): number {
 }
 
 /** Decompresses every concatenated member; throws a GNU gzip style reason on corrupt input. */
-export function gunzip(data: Uint8Array): Buffer {
+export function gunzip(data: Uint8Array): Uint8Array {
   if (!isGzip(data)) throw new GzipError('not in gzip format');
-  try {
-    return gunzipSync(data);
-  } catch (e) {
-    const { code, message } = e as { code?: string; message?: string };
-    if (code === 'Z_BUF_ERROR') throw new GzipError('unexpected end of file');
-    throw new GzipError(`invalid compressed data--${/check/.test(message ?? '') ? 'crc error' : 'format violated'}`);
+  const parts: Uint8Array[] = [];
+  for (let at = 0; at < data.length; ) {
+    if (parts.length && !isGzip(data.subarray(at))) break;
+    if (data[at + 2] !== 8) throw new GzipError('invalid compressed data--format violated');
+    const start = at + gzipOverhead(data.subarray(at)) - 8;
+    if (start > data.length) throw new GzipError('unexpected end of file');
+    let member: { out: Uint8Array; end: number };
+    try {
+      member = inflateRaw(data, start);
+    } catch (e) {
+      throw e instanceof InflateError ? new GzipError(e.message) : e;
+    }
+    if (member.end + 8 > data.length) throw new GzipError('unexpected end of file');
+    const tail = new DataView(data.buffer, data.byteOffset + member.end, 8);
+    if (tail.getUint32(0, true) !== crc32(member.out) || tail.getUint32(4, true) !== member.out.length >>> 0) throw new GzipError('invalid compressed data--crc error');
+    parts.push(member.out);
+    at = member.end + 8;
   }
+  return concatBytes(parts);
 }
 
 export class GzipError extends Error {}

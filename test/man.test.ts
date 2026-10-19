@@ -4,9 +4,8 @@ import { gzipSync } from 'node:zlib';
 import { allPages } from '../src/commands/sys/man/pages/index.ts';
 import { render } from '../src/commands/sys/man/render.ts';
 import { toRoff } from '../src/commands/sys/man/toroff.ts';
-import { Runtime } from '../src/runtime.ts';
 import { StringReader } from '../src/shell/io.ts';
-import { machine, sh } from './helpers.ts';
+import { machine, Runtime, sh } from './helpers.ts';
 
 const LS_HEADER = 'LS(1)                            User Commands                           LS(1)';
 const LS_FOOTER = 'tuxrt 0.1.0                         2026-10                              LS(1)';

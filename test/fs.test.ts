@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Runtime } from '../src/runtime.ts';
 import { StringReader } from '../src/shell/io.ts';
-import { machine } from './helpers.ts';
+import { machine, Runtime } from './helpers.ts';
 
 type Run = Awaited<ReturnType<typeof machine>>;
 

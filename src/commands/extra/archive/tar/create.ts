@@ -14,7 +14,7 @@ import { encodeEntry, TarError, type TarEntry } from './ustar.ts';
 interface Walk {
   ctx: Ctx;
   status: TarStatus;
-  out: Buffer[];
+  out: Uint8Array[];
   archive: string | null;
   excluded: (name: string) => boolean;
   log: ((e: TarEntry) => void) | null;
@@ -72,7 +72,7 @@ async function add(w: Walk, path: string, name: string): Promise<void> {
 }
 
 /** Returns the encoded member blocks for every operand, reporting problems through `status`. */
-export async function createEntries(ctx: Ctx, a: TarArgs, status: TarStatus, archive: string | null, verbose: Writer): Promise<Buffer[]> {
+export async function createEntries(ctx: Ctx, a: TarArgs, status: TarStatus, archive: string | null, verbose: Writer): Promise<Uint8Array[]> {
   const lister = longLister();
   const w: Walk = {
     ctx, status, out: [], archive, excluded: excluder(a.excludes),

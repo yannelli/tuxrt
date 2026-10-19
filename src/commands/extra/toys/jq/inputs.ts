@@ -1,8 +1,19 @@
 import { ParseError, parseJson } from './json.ts';
 import { isObj, type Value } from './value.ts';
 
-/** A whole file, or stdin pulled chunk by chunk (`read` returns null at end of input). */
-export type Source = { name: string; text: string } | { name: string; read: () => string | null };
+/** A whole file, or stdin pulled chunk by chunk (`read` returns null at end of input, undefined when nothing is buffered yet). */
+export type Source = { name: string; text: string } | { name: string; read: () => string | null | undefined };
+
+/** Returned by Inputs.next when stdin has nothing buffered; the caller refills it and asks again. */
+export const PENDING = Symbol('pending');
+type Read = () => string | null | undefined;
+
+/** Stdin ran past what a single-threaded host buffers before `input`, `inputs` or --slurp start reading it. */
+export class UnbufferedInput extends Error {
+  constructor() {
+    super('stdin is larger than this platform can buffer for input, inputs or --slurp');
+  }
+}
 
 /** jq reads input a line at a time, so "(at <stdin>:N)" counts lines through the one where a value ended. */
 function lineCounter(text: string): (end: number) => number {
@@ -32,7 +43,7 @@ export class Inputs {
   loc = '<unknown>';
   line = 0;
   filename: Value = null;
-  private readonly iter: Generator<Value>;
+  private readonly iter: Generator<Value | typeof PENDING>;
   private readonly stream: boolean;
 
   constructor(sources: Source[], raw: boolean, slurp: boolean, stream = false) {
@@ -40,12 +51,12 @@ export class Inputs {
     this.iter = slurp ? this.slurped(sources, raw) : this.each(sources, raw);
   }
 
-  next(): Value | undefined {
+  next(): Value | undefined | typeof PENDING {
     const r = this.iter.next();
     return r.done ? undefined : r.value;
   }
 
-  private *values(src: Source, raw: boolean): Generator<Value> {
+  private *values(src: Source, raw: boolean): Generator<Value | typeof PENDING> {
     const name = src.name === '-' ? '<stdin>' : src.name;
     this.filename = src.name === '-' ? null : src.name;
     if (!('text' in src)) return yield* raw ? this.streamLines(src.read, name) : this.streamJson(src.read, name);
@@ -68,9 +79,13 @@ export class Inputs {
     }
   }
 
-  private *streamLines(read: () => string | null, name: string): Generator<Value> {
+  private *streamLines(read: Read, name: string): Generator<Value | typeof PENDING> {
     let buf = '';
     for (let chunk = read(); ; chunk = read()) {
+      if (chunk === undefined) {
+        yield PENDING;
+        continue;
+      }
       if (chunk !== null) buf += chunk;
       for (let nl = buf.indexOf('\n'); nl !== -1; nl = buf.indexOf('\n')) {
         this.loc = `${name}:${++this.line}`;
@@ -87,7 +102,7 @@ export class Inputs {
   }
 
   /** Like jq's line-buffered reader: only complete lines are parsed, so values appear as soon as their line ends. */
-  private *streamJson(read: () => string | null, name: string): Generator<Value> {
+  private *streamJson(read: Read, name: string): Generator<Value | typeof PENDING> {
     let buf = '';
     let eof = false;
     let lines = 0;
@@ -95,7 +110,8 @@ export class Inputs {
     for (;;) {
       while (!eof && buf.length < want) {
         const chunk = read();
-        if (chunk === null) eof = true;
+        if (chunk === undefined) yield PENDING;
+        else if (chunk === null) eof = true;
         else buf += chunk;
       }
       const cut = eof ? buf.length : buf.lastIndexOf('\n') + 1;
@@ -120,17 +136,22 @@ export class Inputs {
     }
   }
 
-  private *each(sources: Source[], raw: boolean): Generator<Value> {
+  private *each(sources: Source[], raw: boolean): Generator<Value | typeof PENDING> {
     for (const src of sources) yield* this.values(src, raw);
   }
 
-  private *slurped(sources: Source[], raw: boolean): Generator<Value> {
+  private *slurped(sources: Source[], raw: boolean): Generator<Value | typeof PENDING> {
     if (raw) {
       yield sources.map((s) => ('text' in s ? s.text : drain(s.read))).join('');
       return;
     }
     const all: Value[] = [];
-    for (const src of sources) all.push(...this.values(src, false));
+    for (const src of sources) {
+      for (const v of this.values(src, false)) {
+        if (v === PENDING) throw new UnbufferedInput();
+        all.push(v);
+      }
+    }
     yield all;
   }
 }
@@ -141,8 +162,11 @@ function count(text: string, from: number, to: number): number {
   return n;
 }
 
-function drain(read: () => string | null): string {
+function drain(read: Read): string {
   let out = '';
-  for (let chunk = read(); chunk !== null; chunk = read()) out += chunk;
+  for (let chunk = read(); chunk !== null; chunk = read()) {
+    if (chunk === undefined) throw new UnbufferedInput();
+    out += chunk;
+  }
   return out;
 }

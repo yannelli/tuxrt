@@ -1,3 +1,5 @@
+import { concatBytes, latin1Bytes, utf8Decode, utf8Encode } from '../../../../vfs/bytes.ts';
+
 export type TarKind = 'file' | 'dir' | 'symlink' | 'link';
 
 export interface TarEntry {
@@ -21,28 +23,28 @@ const RECORD = 10240;
 const TYPEFLAG: Record<TarKind, string> = { file: '0', dir: '5', symlink: '2', link: '1' };
 const KIND: Record<string, TarKind> = { '0': 'file', '\0': 'file', '7': 'file', '5': 'dir', '2': 'symlink', '1': 'link' };
 
-function putString(h: Buffer, off: number, len: number, value: string | Uint8Array): void {
-  const bytes = typeof value === 'string' ? Buffer.from(value, 'utf8') : value;
+function putString(h: Uint8Array, off: number, len: number, value: string | Uint8Array): void {
+  const bytes = typeof value === 'string' ? utf8Encode(value) : value;
   h.set(bytes.subarray(0, len), off);
 }
 
-function putOctal(h: Buffer, off: number, len: number, n: number): void {
-  h.write(`${n.toString(8).padStart(len - 1, '0')}\0`, off, 'latin1');
+function putOctal(h: Uint8Array, off: number, len: number, n: number): void {
+  h.set(latin1Bytes(`${n.toString(8).padStart(len - 1, '0')}\0`), off);
 }
 
 /** POSIX ustar stores names over 100 bytes as prefix + "/" + name, splitting at a slash. */
-function splitName(name: Buffer): [Buffer, Buffer] {
-  if (name.length <= 100) return [Buffer.alloc(0), name];
+function splitName(name: Uint8Array): [Uint8Array, Uint8Array] {
+  if (name.length <= 100) return [new Uint8Array(0), name];
   for (let i = Math.max(1, name.length - 101); i <= Math.min(155, name.length - 2); i++) {
     if (name[i] === 0x2f) return [name.subarray(0, i), name.subarray(i + 1)];
   }
   throw new TarError('file name is too long (cannot be split); not dumped');
 }
 
-export function encodeHeader(e: TarEntry): Buffer {
-  const [prefix, name] = splitName(Buffer.from(e.name, 'utf8'));
-  if (Buffer.byteLength(e.linkname) > 100) throw new TarError('link name is too long; not dumped');
-  const h = Buffer.alloc(BLOCK);
+export function encodeHeader(e: TarEntry): Uint8Array {
+  const [prefix, name] = splitName(utf8Encode(e.name));
+  if (utf8Encode(e.linkname).length > 100) throw new TarError('link name is too long; not dumped');
+  const h = new Uint8Array(BLOCK);
   putString(h, 0, 100, name);
   putOctal(h, 100, 8, e.mode & 0o7777);
   putOctal(h, 108, 8, e.uid);
@@ -50,27 +52,27 @@ export function encodeHeader(e: TarEntry): Buffer {
   putOctal(h, 124, 12, e.kind === 'file' ? e.data.length : 0);
   putOctal(h, 136, 12, Math.max(0, Math.floor(e.mtime)));
   h.fill(0x20, 148, 156);
-  h.write(TYPEFLAG[e.kind], 156, 'latin1');
+  h.set(latin1Bytes(TYPEFLAG[e.kind]), 156);
   putString(h, 157, 100, e.linkname);
-  h.write('ustar\x0000', 257, 'latin1');
+  h.set(latin1Bytes('ustar\x0000'), 257);
   putString(h, 265, 32, e.uname);
   putString(h, 297, 32, e.gname);
   putOctal(h, 329, 8, 0);
   putOctal(h, 337, 8, 0);
   putString(h, 345, 155, prefix);
-  h.write(`${checksum(h).toString(8).padStart(6, '0')}\0 `, 148, 'latin1');
+  h.set(latin1Bytes(`${checksum(h).toString(8).padStart(6, '0')}\0 `), 148);
   return h;
 }
 
 /** Concatenates entries, adds the two zero end blocks and pads to a 10240-byte record like GNU tar. */
-export function buildTar(blocks: Uint8Array[]): Buffer {
-  const body = Buffer.concat([...blocks, Buffer.alloc(BLOCK * 2)]);
-  return Buffer.concat([body, Buffer.alloc((RECORD - (body.length % RECORD)) % RECORD)]);
+export function buildTar(blocks: Uint8Array[]): Uint8Array {
+  const size = blocks.reduce((n, b) => n + b.length, 0) + BLOCK * 2;
+  return concatBytes([...blocks, new Uint8Array(BLOCK * 2 + ((RECORD - (size % RECORD)) % RECORD))]);
 }
 
-export function encodeEntry(e: TarEntry): Buffer {
+export function encodeEntry(e: TarEntry): Uint8Array {
   const pad = (BLOCK - (e.data.length % BLOCK)) % BLOCK;
-  return e.kind === 'file' ? Buffer.concat([encodeHeader(e), e.data, Buffer.alloc(pad)]) : encodeHeader(e);
+  return e.kind === 'file' ? concatBytes([encodeHeader(e), e.data, new Uint8Array(pad)]) : encodeHeader(e);
 }
 
 function checksum(h: Uint8Array): number {
@@ -82,7 +84,7 @@ function checksum(h: Uint8Array): number {
 function getString(h: Uint8Array, off: number, len: number): string {
   const field = h.subarray(off, off + len);
   const end = field.indexOf(0);
-  return Buffer.from(end === -1 ? field : field.subarray(0, end)).toString('utf8');
+  return utf8Decode(end === -1 ? field : field.subarray(0, end));
 }
 
 function getNumber(h: Uint8Array, off: number, len: number): number {
@@ -100,7 +102,7 @@ function isZero(h: Uint8Array): boolean {
 
 function paxRecords(data: Uint8Array): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const rec of Buffer.from(data).toString('utf8').split('\n')) {
+  for (const rec of utf8Decode(data).split('\n')) {
     const m = /^\d+ ([^=]+)=(.*)$/s.exec(rec);
     if (m) out[m[1]] = m[2];
   }

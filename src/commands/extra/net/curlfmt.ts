@@ -1,4 +1,18 @@
-import { STATUS_CODES } from 'node:http';
+import { type HttpResponse } from '../../../platform/http.ts';
+
+const STATUS_CODES: Record<number, string> = {
+  100: 'Continue', 101: 'Switching Protocols', 200: 'OK', 201: 'Created', 202: 'Accepted', 203: 'Non-Authoritative Information',
+  204: 'No Content', 205: 'Reset Content', 206: 'Partial Content', 300: 'Multiple Choices', 301: 'Moved Permanently', 302: 'Found',
+  303: 'See Other', 304: 'Not Modified', 307: 'Temporary Redirect', 308: 'Permanent Redirect', 400: 'Bad Request',
+  401: 'Unauthorized', 402: 'Payment Required', 403: 'Forbidden', 404: 'Not Found', 405: 'Method Not Allowed',
+  406: 'Not Acceptable', 407: 'Proxy Authentication Required', 408: 'Request Timeout', 409: 'Conflict', 410: 'Gone',
+  411: 'Length Required', 412: 'Precondition Failed', 413: 'Payload Too Large', 414: 'URI Too Long',
+  415: 'Unsupported Media Type', 416: 'Range Not Satisfiable', 417: 'Expectation Failed', 418: "I'm a Teapot",
+  421: 'Misdirected Request', 422: 'Unprocessable Entity', 425: 'Too Early', 426: 'Upgrade Required',
+  428: 'Precondition Required', 429: 'Too Many Requests', 431: 'Request Header Fields Too Large',
+  451: 'Unavailable For Legal Reasons', 500: 'Internal Server Error', 501: 'Not Implemented', 502: 'Bad Gateway',
+  503: 'Service Unavailable', 504: 'Gateway Timeout', 505: 'HTTP Version Not Supported',
+};
 
 export interface Outcome {
   url: string;
@@ -9,15 +23,15 @@ export interface Outcome {
   ms: number;
 }
 
-export function reason(res: Response): string {
+export function reason(res: HttpResponse): string {
   return res.statusText || STATUS_CODES[res.status] || '';
 }
 
-export function statusLine(res: Response): string {
+export function statusLine(res: HttpResponse): string {
   return `HTTP/1.1 ${res.status} ${reason(res)}`;
 }
 
-export function headerLines(res: Response): string[] {
+export function headerLines(res: HttpResponse): string[] {
   const out = [statusLine(res)];
   for (const [name, value] of res.headers) {
     if (name === 'set-cookie') continue;
@@ -27,7 +41,7 @@ export function headerLines(res: Response): string[] {
   return out;
 }
 
-export function headerBlock(res: Response): string {
+export function headerBlock(res: HttpResponse): string {
   return `${headerLines(res).join('\r\n')}\r\n\r\n`;
 }
 

@@ -4,7 +4,7 @@ import { formatMode } from '../../../../vfs/mode.ts';
 import { dirname, normalize } from '../../../../vfs/path.ts';
 import { findGroup, findUser } from '../../../../vfs/users.ts';
 import type { Ctx } from '../../../types.ts';
-import { fromBytes } from '../../../../vfs/bytes.ts';
+import { concatBytes, fromBytes } from '../../../../vfs/bytes.ts';
 import type { TarArgs } from './args.ts';
 import { excluder, longLister, safeName, selects } from './names.ts';
 import type { TarStatus } from './status.ts';
@@ -98,7 +98,7 @@ export async function listOrExtract(ctx: Ctx, a: TarArgs, status: TarStatus, ent
     if (!a.toStdout) extractOne(x, e, name);
     else if (e.kind === 'file') piped.push(e.data);
   }
-  if (piped.length) ctx.stdout.write(fromBytes(Buffer.concat(piped)));
+  if (piped.length) ctx.stdout.write(fromBytes(concatBytes(piped)));
   for (const [path, name, e] of x.dirs.reverse()) setMeta(x, path, name, e);
   for (const w of wanted) if (!found.has(w)) status.error(`${w}: Not found in archive`);
 }

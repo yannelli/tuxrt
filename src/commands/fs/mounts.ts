@@ -2,6 +2,7 @@ import { machine } from '../../vfs/machine.ts';
 import { split } from '../../vfs/path.ts';
 import type { VNode } from '../../vfs/types.ts';
 import type { VFS } from '../../vfs/vfs.ts';
+import { byteLength } from '../../vfs/bytes.ts';
 
 export interface Mount {
   source: string;
@@ -38,7 +39,7 @@ export function usedKb(vfs: VFS, m: Mount): number {
   const others = new Set(mounts().map((o) => o.target).filter((t) => t !== m.target));
   const size = (n: VNode, path: string): number => {
     if (n.kind === 'symlink') return 0;
-    if (n.kind === 'file') return n.generate ? 0 : Math.ceil(Buffer.byteLength(n.content) / 4096) * 4;
+    if (n.kind === 'file') return n.generate ? 0 : Math.ceil(byteLength(n.content) / 4096) * 4;
     let kb = path === m.target ? 0 : 4;
     for (const [name, child] of n.children) {
       const childPath = `${path === '/' ? '' : path}/${name}`;

@@ -2,6 +2,8 @@ import { Interrupt } from '../../shell/control.ts';
 import { lineReader, readAll, type Reader } from '../../shell/io.ts';
 import type { Ctx } from '../types.ts';
 import { abs, fsFail } from '../util.ts';
+import { platform } from '../../platform/index.ts';
+import { latin1, utf8Decode } from '../../vfs/bytes.ts';
 
 export interface LineSource {
   /** Next line including its "\n" (absent on an unterminated last line), or null at EOF. */
@@ -68,14 +70,14 @@ export async function eachLine(ctx: Ctx, files: string[], fn: (line: string, fil
 /** Lets other pipeline stages run, and stops on Ctrl-C / kill. */
 export async function pause(ctx: Ctx): Promise<void> {
   await ctx.stdout.drain?.();
-  await new Promise((r) => setImmediate(r));
+  await platform.yield();
   if (ctx.signal.aborted) throw new Interrupt(128 + (Number(ctx.signal.reason) || 2));
 }
 
 export { isBinary as isRaw, toBytes } from '../../vfs/bytes.ts';
 
-export function fromBytes(b: Buffer, raw: boolean): string {
-  return b.toString(raw ? 'latin1' : 'utf8');
+export function fromBytes(b: Uint8Array, raw: boolean): string {
+  return raw ? latin1(b) : utf8Decode(b);
 }
 
 export function displayName(f: string): string {
