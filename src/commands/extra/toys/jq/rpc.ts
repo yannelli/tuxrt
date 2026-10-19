@@ -1,6 +1,6 @@
 import { receiveMessageOnPort, type MessagePort } from 'node:worker_threads';
 
-export type Request = { t: 'stdin' } | { t: 'file'; path: string };
+export type Request = { t: 'stdin' } | { t: 'drain' } | { t: 'file'; path: string };
 export type Response = { data: string | null } | { error: string };
 
 /** Worker-to-host traffic: output, completion, and blocking requests. */

@@ -67,6 +67,7 @@ export async function eachLine(ctx: Ctx, files: string[], fn: (line: string, fil
 
 /** Lets other pipeline stages run, and stops on Ctrl-C / kill. */
 export async function pause(ctx: Ctx): Promise<void> {
+  await ctx.stdout.drain?.();
   await new Promise((r) => setImmediate(r));
   if (ctx.signal.aborted) throw new Interrupt(128 + (Number(ctx.signal.reason) || 2));
 }

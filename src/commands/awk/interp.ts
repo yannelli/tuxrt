@@ -76,7 +76,10 @@ export class Interp extends Evaluator {
   }
 
   private async tick(): Promise<void> {
-    if (++this.ticks % 1000 === 0) await new Promise((r) => setImmediate(r));
+    if (++this.ticks % 1000 === 0) {
+      await this.ctx.stdout.drain?.();
+      await new Promise((r) => setImmediate(r));
+    }
     if (this.ctx.signal.aborted) throw ABORT;
   }
 

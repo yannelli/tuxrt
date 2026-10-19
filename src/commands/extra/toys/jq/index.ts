@@ -27,6 +27,7 @@ function release(w: Worker): void {
 async function serve(ctx: Ctx, req: Request): Promise<Response> {
   try {
     if (req.t === 'stdin') return { data: await ctx.stdin.read() };
+    if (req.t === 'drain') return { data: (await ctx.stdout.drain?.(), null) };
     return { data: ctx.vfs.readFile(req.path) };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };

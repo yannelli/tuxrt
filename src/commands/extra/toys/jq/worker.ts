@@ -11,16 +11,24 @@ interface Start {
 
 const FLUSH_BYTES = 16384;
 const FLUSH_MS = 25;
+/** After this much output the worker blocks until the downstream pipe has room. */
+const DRAIN_BYTES = 262144;
 
 parentPort!.on('message', ({ job, port, flag }: Start) => {
   const rpc = new SyncCaller(port, flag);
   const send = (m: WorkerMessage) => port.postMessage(m);
   let buf = '';
   let last = Date.now();
+  let unacked = 0;
   const flush = () => {
     if (buf) send({ t: 'out', s: buf });
+    unacked += buf.length;
     buf = '';
     last = Date.now();
+    if (unacked > DRAIN_BYTES) {
+      unacked = 0;
+      rpc.call({ t: 'drain' });
+    }
   };
   const data = (res: Response): string | null => {
     if ('error' in res) throw new Error(res.error);

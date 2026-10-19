@@ -1,6 +1,8 @@
 export interface Writer {
   write(data: string): void;
   readonly isTTY?: boolean;
+  /** Resolves once buffered output has been consumed; fast producers await it so pipes stay bounded. */
+  drain?(): Promise<void>;
 }
 
 export interface Reader {
@@ -42,18 +44,29 @@ export class StringReader implements Reader {
 export const EMPTY: Reader = { read: async () => null };
 export const DISCARD: Writer = { write: () => {} };
 
-/** Unbounded in-memory pipe. Writing after the reader closed throws BrokenPipe (SIGPIPE). */
+/** Pipe capacity, like Linux's 64 KiB: writers that await drain() pause beyond this. */
+const PIPE_HIGH_WATER = 65536;
+
+/** In-memory pipe. Writing after the reader closed throws BrokenPipe (SIGPIPE). */
 export class Pipe implements Reader, Writer {
   private chunks: string[] = [];
+  private size = 0;
   private closed = false;
   private readerGone = false;
   private wake: (() => void) | null = null;
+  private drainers: (() => void)[] = [];
 
   write(data: string): void {
     if (this.readerGone) throw new BrokenPipe();
     if (!data) return;
     this.chunks.push(data);
+    this.size += data.length;
     this.notify();
+  }
+
+  drain(): Promise<void> {
+    if (this.size < PIPE_HIGH_WATER || this.readerGone) return Promise.resolve();
+    return new Promise((r) => this.drainers.push(r));
   }
 
   close(): void {
@@ -64,11 +77,27 @@ export class Pipe implements Reader, Writer {
   closeRead(): void {
     this.readerGone = true;
     this.chunks = [];
+    this.size = 0;
+    this.release();
   }
 
+  /** Returns at most about one pipe-capacity of data per call, so a flood never becomes one giant string. */
   async read(): Promise<string | null> {
     while (!this.chunks.length && !this.closed) await new Promise<void>((r) => (this.wake = r));
-    return this.chunks.length ? this.chunks.splice(0).join('') : null;
+    if (!this.chunks.length) return null;
+    let n = 0;
+    let taken = 0;
+    while (n < this.chunks.length && (n === 0 || taken + this.chunks[n].length <= PIPE_HIGH_WATER)) taken += this.chunks[n++].length;
+    const out = this.chunks.splice(0, n).join('');
+    this.size -= out.length;
+    if (this.size < PIPE_HIGH_WATER) this.release();
+    return out;
+  }
+
+  private release(): void {
+    const waiting = this.drainers;
+    this.drainers = [];
+    for (const r of waiting) r();
   }
 
   private notify(): void {

@@ -48,13 +48,16 @@ export async function runNode(shell: Shell, ast: Node, io: IO, opts: RunOptions 
 let ticks = 0;
 
 /** Checks for delivered signals and periodically yields so timers, Ctrl-C and other jobs get to run. */
-export async function checkpoint(shell: Shell): Promise<void> {
+export async function checkpoint(shell: Shell, io?: IO): Promise<void> {
   if (shell.signal.aborted) throw new Interrupt(128 + (Number(shell.signal.reason) || 2));
-  if (++ticks % 256 === 0) await new Promise((r) => setImmediate(r));
+  if (++ticks % 256 === 0) {
+    await io?.stdout.drain?.();
+    await new Promise((r) => setImmediate(r));
+  }
 }
 
 export async function exec(node: Node, shell: Shell, io: IO): Promise<number> {
-  await checkpoint(shell);
+  await checkpoint(shell, io);
   switch (node.type) {
     case 'seq': {
       let status = 0;
@@ -133,7 +136,7 @@ async function loop(shell: Shell, io: IO, body: Node, next: (i: number) => Promi
       }
       throw e;
     }
-    await checkpoint(shell);
+    await checkpoint(shell, io);
   }
   return status;
 }
