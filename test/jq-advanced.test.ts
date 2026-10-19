@@ -38,7 +38,7 @@ test('modules: import, include, data, search paths, ~/.jq', async () => {
 
 test('input streams: endless producers, chunked values, line-buffered parsing', async () => {
   assert.equal(await out(`yes '{"a":1}' | jq -c .a | head -2`), '1\n1\n');
-  assert.equal(await out(`yes 1 | jq -n 'first(inputs)'`), '1\n');
+  assert.deepEqual(await run(`yes 1 | jq -n 'first(inputs)'`), { stdout: '1\n', stderr: '', code: 0 });
   assert.equal(await out(`seq 1000000000 | jq -R tonumber | head -3`), '1\n2\n3\n');
   const chunked = `{ printf '{"a":'; sleep 0.01; printf '"x\\\\ny"}\\n12'; sleep 0.01; printf '3 tr'; sleep 0.01; printf 'ue\\n'; }`;
   assert.equal(await out(`${chunked} | jq -c '[., input_line_number]'`), '[{"a":"x\\ny"},1]\n[123,2]\n[true,2]\n');

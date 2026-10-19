@@ -19,8 +19,12 @@ export class SyncCaller {
   call(req: Request): Response {
     Atomics.store(this.flag, 0, 0);
     this.port.postMessage({ t: 'req', req } satisfies WorkerMessage);
-    Atomics.wait(this.flag, 0, 0);
-    return receiveMessageOnPort(this.port)!.message as Response;
+    // The flag can flip before the reply is visible on this port on some platforms, so poll until it is.
+    for (;;) {
+      Atomics.wait(this.flag, 0, 0, 50);
+      const msg = receiveMessageOnPort(this.port);
+      if (msg) return msg.message as Response;
+    }
   }
 }
 
