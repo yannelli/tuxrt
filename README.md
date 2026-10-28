@@ -65,6 +65,7 @@ const { output } = await shell.run(toolCall.input); // { command, timeout?, rest
 The core is plain ECMAScript 2020 with no Node, DOM or `node:` imports, enforced by `tsconfig.core.json`. It runs on Node, Bun, Deno, browsers, JavaScriptCore (iOS and macOS, including a Swift `JSContext`), Hermes and QuickJS. On Node, the `node` export condition adds real sockets and resolvers, native deflate, process stats, a worker-thread `jq`, and the `node` command. Every other engine gets `tuxrt/portable`, or `tuxrt/bundle`, a single IIFE file that defines a global `tuxrt` for hosts that evaluate scripts.
 
 The engine only needs `setTimeout`. Each of the following globals is used when present:
+
 - `fetch`: curl and wget, plus DNS over HTTPS (Cloudflare) for `dig` and `ping`.
 - `crypto.getRandomValues` and `performance.now`.
 - `TextEncoder` and `URL`. tuxrt ships pure-JS fallbacks for both, along with deflate and the hash functions.
@@ -73,7 +74,11 @@ Hosts can replace any piece:
 
 ```js
 // e.g. after JSContext.evaluateScript(tuxrt.js) in Swift, with native bridges for timers and HTTP
-tuxrt.configurePlatform({ setTimeout: hostSetTimeout, clearTimeout: hostClearTimeout, http: hostHttp });
+tuxrt.configurePlatform({
+  setTimeout: hostSetTimeout,
+  clearTimeout: hostClearTimeout,
+  http: hostHttp,
+});
 const rt = await tuxrt.Runtime.boot();
 ```
 
